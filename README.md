@@ -100,7 +100,7 @@ A future where every minor in Latin America browses, plays, and chats under an i
 - Screen OCR + multimodal classification of any visible app.
 - Voice transcription + grooming-pattern detection.
 - Federated regional signal network (Hermes) with map visualization.
-- Critical-event alerting (SMS via Twilio, email via Lovable Email).
+- Critical-event alerting (SMS via Twilio, email via  Email).
 - Daily and weekly safety digests for parents.
 - ZeroTrust identity layer with mocked credential issuance and ephemeral tokens.
 - Mobile capture architecture (Android `AccessibilityService` + iOS `FamilyControls`) — design + reference snippets.
@@ -131,7 +131,7 @@ A future where every minor in Latin America browses, plays, and chats under an i
               ┌────────────────────────┼────────────────────────┐
               │                        │                        │
    ┌──────────▼─────────┐  ┌───────────▼──────────┐  ┌──────────▼──────────┐
-   │   Edge Functions   │  │   Lovable AI Gateway │  │  Local heuristics   │
+   │   Edge Functions   │  │    AI Gateway │  │  Local heuristics   │
    │  analyze-risk      │──▶  Gemini 2.5 Flash    │  │  Regex red-flags    │
    │  analyze-image     │  │  (vision + tools)    │  │  Perceptual hashes  │
    │  analyze-screen    │  └──────────────────────┘  └─────────────────────┘
@@ -164,13 +164,13 @@ A future where every minor in Latin America browses, plays, and chats under an i
 
 **Technical.** Edge Function `analyze-risk` runs a two-stage hybrid pipeline:
 1. **Rule scan** — regex-based red-flag matcher across nine categories in Spanish + English (secrecy, image requests, location extraction, in-person meetups, financial fraud, narco recruitment, sextortion, personal info, drugs/alcohol). Each match contributes a weighted score.
-2. **LLM classifier** — sends the message + last 6 messages of context to Gemini 2.5 Flash via the Lovable AI Gateway, using OpenAI-style **tool calling** to force a structured response.
+2. **LLM classifier** — sends the message + last 6 messages of context to Gemini 2.5 Flash via the  AI Gateway, using OpenAI-style **tool calling** to force a structured response.
 
 The final risk score is `max(rule_score, ai_score)` — rules act as a floor so a known red-flag phrase can never be downgraded by the model.
 
 **I/O.** In: `{ message, history }`. Out: `{ risk_score, category, severity, matched_patterns, explanation, recommended_action }`.
 
-**Dependencies.** Lovable AI Gateway, Postgres (`chat_messages`, `risk_events`), Supabase Realtime.
+**Dependencies.**  AI Gateway, Postgres (`chat_messages`, `risk_events`), Supabase Realtime.
 
 **AI / LLM Focus.**
 - **Model:** `google/gemini-2.5-flash` — chosen for low latency, multimodal capability, and strong Spanish performance.
@@ -252,7 +252,7 @@ The final risk score is `max(rule_score, ai_score)` — rules act as a floor so 
 
 ### Alerting & Digests
 
-- **Critical alerts** — Postgres trigger `trg_notify_critical_risk` fires on `severity = 'critical'` inserts → calls `dispatch-critical-alert` → Twilio SMS + Lovable Email.
+- **Critical alerts** — Postgres trigger `trg_notify_critical_risk` fires on `severity = 'critical'` inserts → calls `dispatch-critical-alert` → Twilio SMS +  Email.
 - **Daily digest** — `pg_cron` 08:00 UTC → HTML report with safety score, risk counts, top categories.
 - **Weekly digest** — `pg_cron` Mon 09:00 UTC.
 - **Test button** — Dashboard "Fire test alert" invokes the dispatcher with `{ test: true }`.
@@ -268,7 +268,7 @@ The final risk score is `max(rule_score, ai_score)` — rules act as a floor so 
 - `react-leaflet` + Leaflet (OSM Carto tiles)
 - Framer Motion (selective)
 
-**Backend (Lovable Cloud)**
+**Backend ( Cloud)**
 - Supabase Postgres with Row-Level Security
 - Supabase Edge Functions (Deno) — `analyze-risk`, `analyze-image`, `analyze-screen`, `analyze-audio`, `dispatch-critical-alert`, `send-digest`
 - Supabase Realtime (chat + risk-event streams)
@@ -276,14 +276,14 @@ The final risk score is `max(rule_score, ai_score)` — rules act as a floor so 
 - DB triggers for critical-event dispatch
 
 **AI / ML**
-- **Lovable AI Gateway** with `google/gemini-2.5-flash` (text + vision + audio + tool calling)
+- ** AI Gateway** with `google/gemini-2.5-flash` (text + vision + audio + tool calling)
 - Browser-side **average-hash (aHash)** perceptual fingerprinting
 - Hybrid rule-based red-flag matcher (Spanish + English)
 
 **Infrastructure & Integrations**
 - Twilio (SMS to parent phone)
-- Lovable Email (transactional)
-- Lovable Cloud-managed Postgres + auth + storage
+-  Email (transactional)
+-  Cloud-managed Postgres + auth + storage
 
 **Databases (key tables)**
 - `chat_sessions`, `chat_messages`
@@ -301,7 +301,7 @@ The final risk score is `max(rule_score, ai_score)` — rules act as a floor so 
 4. **Classify** — `analyze-risk` runs rules + Gemini tool-call → returns structured risk.
 5. **Persist event** — `risk_events` row written with severity.
 6. **Trigger** — if `critical`, `trg_notify_critical_risk` fires `dispatch-critical-alert`.
-7. **Notify** — Twilio SMS to parent + email via Lovable Email; row added to `alert_dispatches`.
+7. **Notify** — Twilio SMS to parent + email via  Email; row added to `alert_dispatches`.
 8. **Dashboard** — parent sees a new `AlertCard` in `/dashboard` with explanation + recommended action — never the raw message.
 9. **Digest** — daily/weekly cron aggregates the day's events into an HTML safety report.
 
@@ -311,9 +311,9 @@ The final risk score is `max(rule_score, ai_score)` — rules act as a floor so 
 
 ### Requirements
 - Node 18+ and `bun` (or npm)
-- A Lovable project with **Lovable Cloud** enabled (provisions Postgres + Edge Functions automatically)
-- Twilio account (for SMS) — connected via Lovable Standard Connectors
-- Lovable Email enabled (sender domain verified)
+- A  project with ** Cloud** enabled (provisions Postgres + Edge Functions automatically)
+- Twilio account (for SMS) — connected via  Standard Connectors
+-  Email enabled (sender domain verified)
 
 ### Setup
 ```bash
@@ -321,20 +321,20 @@ bun install
 bun dev
 ```
 
-### Environment variables (auto-provisioned by Lovable Cloud)
+### Environment variables (auto-provisioned by  Cloud)
 ```
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_PUBLISHABLE_KEY=...
 VITE_SUPABASE_PROJECT_ID=...
 ```
 
-### Edge Function secrets (set in Lovable Cloud)
+### Edge Function secrets (set in  Cloud)
 ```
 LOVABLE_API_KEY            # AI Gateway
 TWILIO_ACCOUNT_SID
 TWILIO_AUTH_TOKEN
 TWILIO_FROM_NUMBER
-RESEND_API_KEY             # if using direct email instead of Lovable Email
+RESEND_API_KEY             # if using direct email instead of  Email
 ```
 
 ---
@@ -389,11 +389,11 @@ RESEND_API_KEY             # if using direct email instead of Lovable Email
 
 ## 15. Contributing
 
-1. Fork the repo / open in Lovable.
+1. Fork the repo / open in .
 2. Branch from `main`.
 3. Keep changes scoped — UI changes should not touch Edge Functions and vice versa.
 4. Run `bun run lint` and `bunx vitest run` before opening a PR.
-5. Never commit secrets; use Lovable Cloud secret management.
+5. Never commit secrets; use  Cloud secret management.
 6. Preserve the privacy invariants: **no raw chat content in alerts, no PII in the ZeroTrust panel, no unbounded retention.**
 
 ---
