@@ -1,0 +1,13 @@
+project_id = "etkrmldkmfnyfpckzbmh"
+[functions.analyze-risk]
+verify_jwt = false
+[functions.analyze-screen]
+verify_jwt = false
+[functions.analyze-image]
+verify_jwt = false
+[functions.analyze-audio]
+verify_jwt = false
+[functions.dispatch-critical-alert]
+verify_jwt = false
+[functions.send-digest]
+verify_jwt = false
