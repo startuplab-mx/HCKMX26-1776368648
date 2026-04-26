@@ -131,7 +131,7 @@ A future where every minor in Latin America browses, plays, and chats under an i
               ┌────────────────────────┼────────────────────────┐
               │                        │                        │
    ┌──────────▼─────────┐  ┌───────────▼──────────┐  ┌──────────▼──────────┐
-   │   Edge Functions   │  │    AI Gateway │  │  Local heuristics   │
+   │   Edge Functions   │  │    AI Gateway        │  │  Local heuristics   │
    │  analyze-risk      │──▶  Gemini 2.5 Flash    │  │  Regex red-flags    │
    │  analyze-image     │  │  (vision + tools)    │  │  Perceptual hashes  │
    │  analyze-screen    │  └──────────────────────┘  └─────────────────────┘
