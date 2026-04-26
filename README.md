@@ -4,7 +4,8 @@
 
 Built for **Hackathon 404 · U.S. Embassy in Mexico** — a multi-modal child-safety platform that detects grooming, sextortion, narco recruitment, fraud, and synthetic-media manipulation the moment a message, image, voice clip, or screen-grab is produced, **without ever exposing raw content to parents**.
 
-🔗 **Live deployment:** https://aegis-hack404.lovable.app
+🔗 **Live deployment:** https://aegis-hack404.lovable.app  
+
 📹 **Demo Video:** https://youtu.be/1lA4gh4k-FE
 
 ---
