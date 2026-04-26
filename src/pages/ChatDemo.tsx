@@ -332,19 +332,11 @@ export default function ChatDemo() {
 
       {/* Main */}
       <main className="mx-auto max-w-[1400px] px-4 py-6 lg:px-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4">
           <ScenarioControls
             busy={scenarioBusy}
             onSendStranger={sendAsStranger}
           />
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="rounded-md bg-severity-critical px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-severity-critical-foreground">
-              {stats.critical} crit
-            </span>
-            <span className="rounded-md bg-severity-medium px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-severity-medium-foreground">
-              {stats.medium} caution
-            </span>
-          </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr_400px]">
