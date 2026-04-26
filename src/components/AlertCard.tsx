@@ -1,6 +1,14 @@
 import { categoryLabels, type Severity } from "@/lib/utils";
 import { SeverityBadge } from "./SeverityBadge";
-import { AlertTriangle, ShieldCheck, Activity } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Activity, Check, Send, Share2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type RiskEvent = {
   id: string;
@@ -14,7 +22,26 @@ export type RiskEvent = {
   created_at: string;
 };
 
-export function AlertCard({ event }: { event: RiskEvent }) {
+export type Contact = {
+  id: string;
+  label: string;
+  email: string | null;
+  phone: string | null;
+};
+
+export function AlertCard({
+  event,
+  acknowledged = false,
+  contacts = [],
+  onAck,
+  onForward,
+}: {
+  event: RiskEvent;
+  acknowledged?: boolean;
+  contacts?: Contact[];
+  onAck?: (eventId: string) => void;
+  onForward?: (eventId: string, contact: Contact) => void;
+}) {
   const Icon =
     event.severity === "critical"
       ? AlertTriangle
@@ -25,7 +52,8 @@ export function AlertCard({ event }: { event: RiskEvent }) {
   return (
     <div
       className={
-        "animate-slide-in rounded-xl border bg-card p-4 shadow-card " +
+        "animate-slide-in rounded-xl border bg-card p-4 shadow-card transition-opacity " +
+        (acknowledged ? "opacity-60 " : "") +
         (event.severity === "critical"
           ? "border-severity-critical/40 shadow-alert"
           : event.severity === "medium"
@@ -99,6 +127,66 @@ export function AlertCard({ event }: { event: RiskEvent }) {
           </span>
         </div>
       </div>
+
+      {/* Console actions */}
+      {(onAck || onForward) && (
+        <div className="mt-3 flex items-center justify-end gap-2 border-t border-border pt-3">
+          {onForward && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={contacts.length === 0}
+                  className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-2 py-1 text-[11px] font-semibold text-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+                >
+                  <Share2 className="h-3 w-3" />
+                  Forward
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Forward redacted alert to…</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {contacts.length === 0 && (
+                  <DropdownMenuItem disabled>
+                    No trusted contacts configured
+                  </DropdownMenuItem>
+                )}
+                {contacts.map((c) => (
+                  <DropdownMenuItem
+                    key={c.id}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      onForward(event.id, c);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Send className="mr-2 h-3.5 w-3.5 text-primary" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold">{c.label}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {c.email ?? c.phone ?? "no contact info"}
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {onAck && !acknowledged && (
+            <button
+              onClick={() => onAck(event.id)}
+              className="inline-flex items-center gap-1 rounded-sm border border-border bg-card px-2 py-1 text-[11px] font-semibold text-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              <Check className="h-3 w-3" />
+              Acknowledge
+            </button>
+          )}
+          {acknowledged && (
+            <span className="font-mono text-[10px] uppercase tracking-widest text-severity-low">
+              ● acknowledged
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

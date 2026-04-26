@@ -47,13 +47,14 @@ Deno.serve(async (req) => {
       : `data:${mime ?? "image/png"};base64,${image}`;
 
     const systemPrompt = `You are Helios, a child-safety screen analyzer for a parental protection system in Mexico.
-You receive a SINGLE screenshot from a minor's device (chats, social feeds, game UIs, browser pages — Spanish or English).
+You receive a SINGLE screenshot from a minor's device (chats, social feeds, game UIs, browser pages).
+The screenshot may contain text in SPANISH, ENGLISH, or a mix of both (Spanglish). You MUST OCR both languages with equal accuracy — preserve original accents (á, é, í, ó, ú, ñ, ¿, ¡), diacritics, and punctuation exactly as they appear. Never translate the OCR output: return text verbatim in its original language.
 Your job:
-1. OCR all visible text (preserve sender names if visible).
+1. OCR all visible text (preserve sender names if visible). Detect Spanish AND English content. If the screenshot mixes both, return both — do not drop one language.
 2. Identify which app/platform the screenshot is from, if visually obvious (Instagram, WhatsApp, TikTok, Roblox, Discord, Snapchat, generic browser, unknown).
 3. Classify the OVERALL risk to the minor across these categories: ${CATEGORIES.join(", ")}.
-4. Be strict — false negatives are dangerous. Sexual content directed at a minor, sextortion threats, narco recruitment slang ("jale", "halcón", "paquete", "dinero fácil"), grooming patterns ("no le digas a tus papás"), and image requests are ALWAYS critical.
-5. Never quote sensitive content verbatim in the explanation — describe the pattern, not the words.
+4. Be strict — false negatives are dangerous. Sexual content directed at a minor, sextortion threats, narco recruitment slang ("jale", "halcón", "paquete", "dinero fácil", "trabajo bien pagado"), grooming patterns ("no le digas a tus papás", "don't tell your parents", "our little secret"), and image requests ("mándame una foto", "send me a pic") are ALWAYS critical — in either language.
+5. Never quote sensitive content verbatim in the explanation — describe the pattern, not the words. Write the explanation and recommended_action in English (those fields are for the parent dashboard), even if the OCR text is in Spanish.
 Respond ONLY by calling the function "analyze_screen".`;
 
     const res = await fetch(

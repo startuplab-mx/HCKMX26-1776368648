@@ -2,402 +2,225 @@
 
 > Real-time, privacy-first protection for the conversations parents can't see.
 
-Built for **Hackathon 404 · U.S. Embassy in Mexico** — a multi-modal child-safety platform that detects grooming, sextortion, narco recruitment, and fraud the moment a message, image, screen, or voice signal arrives — across chats, games, screens, and audio — without ever exposing raw content to parents.
+Built for **Hackathon 404 · U.S. Embassy in Mexico** — a multi-modal child-safety platform that detects grooming, sextortion, narco recruitment, fraud, and synthetic-media manipulation the moment a message, image, voice clip, or screen-grab is produced, **without ever exposing raw content to parents**.
+
+🔗 **Live deployment:** https://aegis-hack404.lovable.app
 
 ---
 
 ## Table of Contents
 
-1. [Project Name](#1-project-name)
-2. [Executive Summary](#2-executive-summary)
-3. [Vision](#3-vision)
-4. [Objectives](#4-objectives)
-5. [Users](#5-users)
-6. [Scope](#6-scope)
-7. [High-Level Architecture](#7-high-level-architecture)
-8. [Modules / Features Breakdown](#8-modules--features-breakdown)
+1. [Executive Summary](#1-executive-summary)
+2. [Vision & Objectives](#2-vision--objectives)
+3. [Users](#3-users)
+4. [Architecture](#4-architecture)
+5. [Modules](#5-modules)
    - [Argus — Chat Risk Detection](#argus--chat-risk-detection)
-   - [Helios — Screen & OCR Analysis](#helios--screen--ocr-analysis)
    - [Echo — Voice Grooming Detection](#echo--voice-grooming-detection)
    - [Mnemosyne — Image Protection](#mnemosyne--image-protection)
    - [Hermes — Federated Signal Network](#hermes--federated-signal-network)
-   - [Companion — Mobile Capture Architecture](#companion--mobile-capture-architecture)
-   - [ZeroTrust Control Layer](#zerotrust-control-layer)
-   - [Alerting & Digests](#alerting--digests)
-9. [Tech Stack](#9-tech-stack)
-10. [End-to-End Flow](#10-end-to-end-flow)
-11. [Installation & Setup](#11-installation--setup)
-12. [Usage](#12-usage)
-13. [Roadmap](#13-roadmap)
-14. [Risks & Limitations](#14-risks--limitations)
-15. [Contributing](#15-contributing)
-16. [License](#16-license)
+   - [Aletheia — Deepfake & Manipulation Detector](#aletheia--deepfake--manipulation-detector)
+   - [Dashboard — Parental Command Center](#dashboard--parental-command-center)
+   - [Companion — On-Device Capture (planned)](#companion--on-device-capture-planned)
+6. [Tech Stack](#6-tech-stack)
+7. [End-to-End Flow](#7-end-to-end-flow)
+8. [Installation & Setup](#8-installation--setup)
+9. [Usage](#9-usage)
+10. [Costs](#10-costs)
+11. [Roadmap](#11-roadmap)
+12. [Risks & Limitations](#12-risks--limitations)
+13. [License](#13-license)
 
 ---
 
-## 1. Project Name
+## 1. Executive Summary
 
-**Aegis** — *"The shield that watches the conversation, not the child."*
+**Aegis** is a child-safety AI suite that classifies risk across five surfaces — text, voice, images, federated network signals, and synthetic-media — and surfaces only **metadata** (category, severity, score, coarse region, platform) to a parent dashboard. Raw conversations never leave the device or the inference pipeline.
 
-A multi-modal, AI-powered child-safety platform built privacy-first for the Mexican and broader Latin American context.
+The current build is a working demo: every module is wired to a Supabase Edge Function powered by a Gemini / GPT-5 model, all events flow into a shared `risk_events` table, and the parent dashboard renders live timelines, an AI-written executive briefing, and a PDF export.
 
----
+## 2. Vision & Objectives
 
-## 2. Executive Summary
+- **Detect early.** Catch the *escalation* in a conversation, not the aftermath.
+- **Respect privacy.** No raw chat content is ever sent to parents or stored long-term.
+- **Be parent-actionable.** Every alert ships with a recommended action and a calm conversation starter.
+- **Work at scale.** Federated, anonymized signal sharing across many devices (Hermes) so risk patterns surface without per-user surveillance.
 
-**What it does.** Aegis listens, in real time, to the digital surfaces a minor uses — DMs, in-game chat, screens, voice calls, image galleries — and classifies risk along ten categories (grooming, sextortion, narco recruitment, financial fraud, cyberbullying, unsafe meetups, drugs/alcohol, personal-info extraction, and more). When something dangerous appears, it tells a parent **why** the situation is risky and **what to do**, *without* showing the raw conversation.
+## 3. Users
 
-**Problem.** Parents can't read every message their child sends, and shouldn't. But the threats children face online — adult predators, cartel recruiters, sextortion rings, scam operators — are sophisticated, multilingual, and fast. Existing parental-control tools either over-collect (surveillance) or under-detect (keyword lists).
+- **Parents / guardians** — the primary dashboard audience. Receive only high-signal, low-noise alerts.
+- **Minors (10–17)** — the protected party. Their conversations are inspected on-device or in a sealed inference path; no raw content is ever forwarded.
+- **Schools / NGOs (future)** — aggregate-only views via Hermes for policy and outreach.
 
-**Value proposition.**
-- **Detection that matters** — hybrid rules + LLM classifier covering Spanish, English, and regional slang.
-- **Privacy by design** — parents see structured risk explanations, never raw content.
-- **Multi-modal** — text, image, screen OCR, and audio in a single coherent system.
-- **Action-ready** — critical events trigger SMS + email in under one second.
-
----
-
-## 3. Vision
-
-A future where every minor in Latin America browses, plays, and chats under an invisible safety mesh that intervenes only when intervention is warranted — preserving autonomy, trust, and dignity, while making predators, recruiters, and scammers structurally unable to operate at scale.
-
-**Expected impact.**
-- Reduce time-to-intervention on grooming and sextortion cases from days/weeks to seconds.
-- Give Mexican families a Spanish-native, regionally-aware tool (most existing solutions are English-first and miss local threat patterns like *halconeo* or *jale*).
-- Build a federated signal layer where one detected predator instantly raises risk scores across every protected device.
-
----
-
-## 4. Objectives
-
-| Goal | KPI |
-|---|---|
-| Sub-second risk classification | p95 < 1.0s for chat messages |
-| High recall on critical categories | False-negative rate < 5% on grooming/sextortion |
-| Zero raw-content exposure to parents | 100% of alerts use abstracted explanations |
-| Real-time critical alerting | SMS + email dispatched within 5s of trigger |
-| Multilingual coverage | Spanish, English, regional Mexican slang |
-| Federated learning effect | Each new signal improves Hermes risk map |
-
----
-
-## 5. Users
-
-| User type | Needs | Primary use cases |
-|---|---|---|
-| **Parents / Guardians** | Awareness without surveillance, clear actions | Receive critical SMS, review daily/weekly digests, override decisions |
-| **Minors (6–17)** | Frictionless protection, no shame, no constant interruption | Use chat, social, games normally; system intervenes silently |
-| **NGOs / Schools** | Aggregate threat intelligence | Hermes regional risk dashboards |
-| **Law enforcement (future)** | Verified, hashed evidence trail | Audit log of dispatches, zero-knowledge case files |
-
----
-
-## 6. Scope
-
-### Included
-- Real-time text classification (chat / DM / game chat).
-- Image risk analysis with on-device perceptual hashing and auto-blur.
-- Screen OCR + multimodal classification of any visible app.
-- Voice transcription + grooming-pattern detection.
-- Federated regional signal network (Hermes) with map visualization.
-- Critical-event alerting (SMS via Twilio, email via  Email).
-- Daily and weekly safety digests for parents.
-- ZeroTrust identity layer with mocked credential issuance and ephemeral tokens.
-- Mobile capture architecture (Android `AccessibilityService` + iOS `FamilyControls`) — design + reference snippets.
-
-### Explicitly NOT included
-- A native mobile build (Companion is a *concept page* with reference architecture; no Capacitor/native shell shipped).
-- Real government identity integration (RENAPO/INE references are mocked for the ZeroTrust layer).
-- Storing raw chat content longer than the active session (privacy invariant).
-- Production-grade biometric verification.
-- End-user account system / multi-tenancy (single-family demo scope).
-
----
-
-## 7. High-Level Architecture
+## 4. Architecture
 
 ```
-                       ┌────────────────────────────────┐
-                       │        Capture Surfaces        │
-                       │  Chat · Screen · Image · Audio │
-                       │  (web demo + mobile concept)   │
-                       └───────────────┬────────────────┘
-                                       │
-                          ┌────────────▼────────────┐
-                          │   ZeroTrust Layer       │
-                          │  (token + enforcement)  │
-                          └────────────┬────────────┘
-                                       │
-              ┌────────────────────────┼────────────────────────┐
-              │                        │                        │
-   ┌──────────▼─────────┐  ┌───────────▼──────────┐  ┌──────────▼──────────┐
-   │   Edge Functions   │  │    AI Gateway        │  │  Local heuristics   │
-   │  analyze-risk      │──▶  Gemini 2.5 Flash    │  │  Regex red-flags    │
-   │  analyze-image     │  │  (vision + tools)    │  │  Perceptual hashes  │
-   │  analyze-screen    │  └──────────────────────┘  └─────────────────────┘
-   │  analyze-audio     │
-   └──────────┬─────────┘
-              │
-   ┌──────────▼──────────┐       ┌─────────────────────────┐
-   │   Postgres (RLS)    │──────▶│  Trigger on critical    │
-   │  risk_events        │       │  → dispatch-critical-   │
-   │  chat_messages      │       │     alert               │
-   │  alert_dispatches   │       └─────────────┬───────────┘
-   │  parent_contacts    │                     │
-   └──────────┬──────────┘         ┌───────────▼───────────┐
-              │                    │  Twilio SMS + Email   │
-   ┌──────────▼──────────┐         └───────────────────────┘
-   │  pg_cron schedules  │
-   │  → send-digest      │
-   └─────────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Capture layer  │ →  │ Edge Functions  │ →  │  risk_events DB │
+│ (chat / voice / │    │ (Lovable AI:    │    │  (severity,     │
+│  image / OCR /  │    │  Gemini / GPT5) │    │   category,     │
+│  manipulation)  │    │                 │    │   score)        │
+└─────────────────┘    └─────────────────┘    └────────┬────────┘
+                                                        │
+                                              ┌─────────▼─────────┐
+                                              │ Parent Dashboard  │
+                                              │  + Resend email   │
+                                              │  + Twilio SMS     │
+                                              │  + AI exec brief  │
+                                              │  + PDF export     │
+                                              └───────────────────┘
 ```
 
-**Data flow.** Capture → ZeroTrust gate → hybrid classifier (rules + LLM) → persisted `risk_event` → if `severity = critical`, DB trigger fires the dispatch function → Twilio/email out. Periodic `pg_cron` jobs aggregate events into safety digests.
+Inference happens in **Supabase Edge Functions**. The frontend is a single React + Vite + Tailwind SPA. Email/SMS dispatch uses Resend and Twilio. AI cost is tallied live into the `ai_usage` table and shown on the home page.
 
----
-
-## 8. Modules / Features Breakdown
+## 5. Modules
 
 ### Argus — Chat Risk Detection
-
-**Functional.** Watches every chat message in real time and flags risky ones with a severity badge (`low` / `medium` / `critical`), a category, a short explanation, and a recommended action for the parent.
-
-**Technical.** Edge Function `analyze-risk` runs a two-stage hybrid pipeline:
-1. **Rule scan** — regex-based red-flag matcher across nine categories in Spanish + English (secrecy, image requests, location extraction, in-person meetups, financial fraud, narco recruitment, sextortion, personal info, drugs/alcohol). Each match contributes a weighted score.
-2. **LLM classifier** — sends the message + last 6 messages of context to Gemini 2.5 Flash via the  AI Gateway, using OpenAI-style **tool calling** to force a structured response.
-
-The final risk score is `max(rule_score, ai_score)` — rules act as a floor so a known red-flag phrase can never be downgraded by the model.
-
-**I/O.** In: `{ message, history }`. Out: `{ risk_score, category, severity, matched_patterns, explanation, recommended_action }`.
-
-**Dependencies.**  AI Gateway, Postgres (`chat_messages`, `risk_events`), Supabase Realtime.
-
-**AI / LLM Focus.**
-- **Model:** `google/gemini-2.5-flash` — chosen for low latency, multimodal capability, and strong Spanish performance.
-- **Prompting:** strict system prompt framing the model as a child-safety classifier in Mexico, instructed that *false negatives are dangerous*. Tool-call schema enforces enum categories and severity.
-- **Memory:** rolling window of the last 6 messages per session — enough for grooming pattern recognition without unbounded context drift.
-- **Limitations:** model is stateless across sessions; sarcasm and code-switching can lower confidence; rules-as-floor mitigates obvious misses.
-
----
-
-### Helios — Screen & OCR Analysis
-
-**Functional.** Reads any screen the child is viewing — closed-app DMs, screenshots, web pages — and classifies what's visible.
-
-**Technical.** Edge Function `analyze-screen` accepts a base64 image, sends it to Gemini 2.5 Flash with a multimodal prompt that performs OCR + risk classification in a single pass.
-
-**I/O.** In: `{ image }`. Out: `{ extracted_text, risk_score, category, severity, explanation }`.
-
-**AI / LLM Focus.** Single-shot vision call. No persistent memory. Limitation: heavy text overlays and stylized fonts reduce OCR accuracy.
-
----
+- Live message-by-message classifier (`analyze-risk`).
+- Categories: grooming, sextortion, narco recruitment, financial fraud, personal-info extraction, unsafe meetup, drugs/alcohol, explicit imagery, cyberbullying, sexual harassment.
+- Returns severity (`low | medium | critical`), score, recommended action, and a one-sentence explanation.
+- A second function (`generate-scenario`) produces escalating synthetic conversations on any topic for live demoing.
 
 ### Echo — Voice Grooming Detection
-
-**Functional.** Transcribes voice clips/calls and flags adult-to-minor grooming patterns.
-
-**Technical.** Edge Function `analyze-audio` pipes audio to Gemini 2.5 Flash (audio-capable), which produces a transcript and a risk classification using the same tool-call schema as Argus.
-
-**Limitations.** Currently single-clip; no real-time streaming. Speaker diarization is heuristic.
-
----
+- `analyze-audio` accepts a short audio clip (Gemini 2.5 Flash multimodal) and returns the same risk schema as Argus.
+- Tuned for game voice chat, Discord calls, and voice notes.
 
 ### Mnemosyne — Image Protection
-
-**Functional.** Before any image leaves the device, Mnemosyne assesses the risk and **auto-blurs + blocks** sharing if the score crosses a threshold.
-
-**Technical.**
-- **Local perceptual hash (`src/lib/phash.ts`)** — 8×8 average hash computed in the browser; matched against a known-harmful blocklist *without uploading the image*.
-- **Edge Function `analyze-image`** — sends image to Gemini vision with strict instructions to never describe bodies or quote PII; classifies for explicit imagery, identifying info, weapons, drugs, and minor presence.
-- **Hard escalation:** `subject_appears_minor && contains_nudity ⇒ score = 1.0` (always critical).
-- **UI thresholds:** `BLUR_THRESHOLD = 0.4`, `AUTOBLOCK_THRESHOLD = 0.7`. Parents can reveal via explicit override.
-
-**AI / LLM Focus.** Same model family. Prompting emphasizes *pattern* over *content* ("intimate self-portrait", "school uniform visible") to keep explanations shareable with parents without re-victimizing the child.
-
----
+- `analyze-image` flags explicit content, identifying info (uniforms, plates, addresses), weapons, drugs.
+- Includes a perceptual-hash check (`phash.ts`) to detect repeats of known-bad images on-device before any upload.
 
 ### Hermes — Federated Signal Network
+- Demo of a privacy-preserving signal mesh: only `(category, region, platform, score)` tuples cross the wire.
+- k-anonymity ≥ 50 and differential-privacy noise are documented in the trust layer.
 
-**Functional.** A live LATAM map showing aggregated risk signals across protected devices — country-level density, category breakdown, recent events.
+### Aletheia — Deepfake & Manipulation Detector
+- Inspects suspicious media (image / link) for synthetic generation, face-swap, or scam-template reuse.
+- Designed to flag the kinds of manipulation used in sextortion campaigns ("not interested" / fake-profile pressure flows).
 
-**Technical.** `react-leaflet` + OpenStreetMap (Carto Light tiles). `CircleMarker` per signal, sized by risk score, colored by category. Hover tooltips and popups expose the abstracted event metadata only.
+### Dashboard — Parental Command Center
+- Real-time timeline of all `risk_events` (message-by-message line chart, dots colored by severity).
+- Top-risk-categories bar chart with a multi-color palette.
+- KPI cards (Safety score / Critical / Caution / Messages) that recolor on threshold.
+- **Recent critical events** with per-event risk-percentage and a *Forward* dropdown that hands the event to a saved `parent_contact` (email or SMS).
+- **Fire test alert** button — exercises the full Resend + Twilio dispatch path (`dispatch-critical-alert`).
+- **Weekly digest** — `send-digest` builds a Resend HTML email recap.
+- **Executive Summary** — `executive-summary` returns a structured ~450-word AI briefing (Headline / Key Signals / Behavioral Context / Steps / Conversation Starters) plus chart-ready datasets. Exportable to a branded **PDF** that embeds the rendered Recharts panels via html2canvas.
 
-**Why Leaflet over Mapbox.** Free, no token, no rate limits — appropriate for a hackathon and for an NGO-friendly production path.
+### Companion — On-Device Capture (planned)
+- iOS Safari Web Extension that reads chat bubbles on `web.whatsapp`, `web.telegram`, Instagram, and Discord and forwards only structured ingest events to Argus.
+- Currently scaffolded as a demo route; not yet shipped to TestFlight (cost projection in §10).
 
----
+## 6. Tech Stack
 
-### Companion — Mobile Capture Architecture
+| Layer        | Tech |
+|--------------|------|
+| Frontend     | React 18, Vite 5, Tailwind v3, TypeScript, shadcn/ui, framer-motion, recharts |
+| PDF export   | jspdf + html2canvas |
+| Backend      | Supabase (Postgres + Edge Functions, Deno runtime) |
+| AI inference | Gemini 2.5 Flash, Gemini 2.5 Pro, GPT-5 family — all called via the in-house AI gateway from edge functions |
+| Email        | Resend |
+| SMS          | Twilio |
+| Hosting      | Lovable (preview + custom subdomain) |
 
-**Functional.** A concept page documenting how Aegis would integrate with real mobile devices.
+## 7. End-to-End Flow
 
-**Technical reference (no native build shipped).**
-- **Android:** `AccessibilityService` reading `TYPE_VIEW_TEXT_CHANGED` events from chat apps; on-device pre-filter; only suspicious payloads leave the device.
-- **iOS:** `FamilyControls` + `DeviceActivityMonitor` + `ManagedSettings` for parental scope; `Screen Time API` for app-level visibility.
-- Includes Kotlin and Swift snippets, permission model, and the privacy invariant: **raw content stays on device unless risk threshold is crossed.**
+1. A capture surface (chat bubble, screen OCR, voice clip, image, manipulated media) produces an event.
+2. The corresponding edge function (`analyze-risk`, `analyze-audio`, `analyze-image`, etc.) calls a Gemini / GPT-5 model, parses a strict JSON tool-call response, and writes a row to `risk_events`.
+3. Every AI call also writes a row to `ai_usage` (model, tokens in/out, USD cost).
+4. If `severity === "critical"`, `dispatch-critical-alert` fans out to all opted-in `parent_contacts` via Resend (email) and Twilio (SMS), logging each attempt to `alert_dispatches`.
+5. The dashboard subscribes to Postgres changes for live updates and lets the parent generate / export an executive briefing.
 
----
+## 8. Installation & Setup
 
-### ZeroTrust Control Layer
-
-**Functional.** A non-intrusive, system-level extension surfaced as a single "Trust Layer" pill button (with a subtle blue indicator). Opens a panel showing **Identity Credential** (mocked RENAPO/INE), **Active Proof** (age + risk scope, ephemeral token), and the **Decision Engine** (Credential → Token → Verification → Decision).
-
-**Technical (`src/lib/trustLayer.ts`).**
-- Mocked signed credentials and JWT-style ephemeral tokens (5-min expiry).
-- `decideEnforcement(token)` → `{ allow, delayMs, shadowBan }`.
-- **Silent enforcement** in `ChatPane`: high-risk actions are *shadow-banned* — echoed locally to the user but never persisted, never classified, never alerted on. No popups, no UI changes. The system feels like infrastructure.
-
-**Privacy invariant.** Panel never exposes raw JSON, keys, or PII — only `Verified` / `Signed` / `Active`.
-
----
-
-### Alerting & Digests
-
-- **Critical alerts** — Postgres trigger `trg_notify_critical_risk` fires on `severity = 'critical'` inserts → calls `dispatch-critical-alert` → Twilio SMS +  Email.
-- **Daily digest** — `pg_cron` 08:00 UTC → HTML report with safety score, risk counts, top categories.
-- **Weekly digest** — `pg_cron` Mon 09:00 UTC.
-- **Test button** — Dashboard "Fire test alert" invokes the dispatcher with `{ test: true }`.
-
----
-
-## 9. Tech Stack
-
-**Frontend**
-- React 18, TypeScript 5, Vite 5
-- Tailwind CSS v3 + shadcn/ui (Radix primitives)
-- React Router v6, TanStack Query
-- `react-leaflet` + Leaflet (OSM Carto tiles)
-- Framer Motion (selective)
-
-**Backend ( Cloud)**
-- Supabase Postgres with Row-Level Security
-- Supabase Edge Functions (Deno) — `analyze-risk`, `analyze-image`, `analyze-screen`, `analyze-audio`, `dispatch-critical-alert`, `send-digest`
-- Supabase Realtime (chat + risk-event streams)
-- `pg_cron` for scheduled digests
-- DB triggers for critical-event dispatch
-
-**AI / ML**
-- ** AI Gateway** with `google/gemini-2.5-flash` (text + vision + audio + tool calling)
-- Browser-side **average-hash (aHash)** perceptual fingerprinting
-- Hybrid rule-based red-flag matcher (Spanish + English)
-
-**Infrastructure & Integrations**
-- Twilio (SMS to parent phone)
--  Email (transactional)
--  Cloud-managed Postgres + auth + storage
-
-**Databases (key tables)**
-- `chat_sessions`, `chat_messages`
-- `risk_events` (category, severity, score, explanation, matched patterns)
-- `parent_contacts` (channel preferences)
-- `alert_dispatches` (audit trail)
-
----
-
-## 10. End-to-End Flow
-
-1. **Capture** — minor sends a chat message in `/demo` (or screen/image/audio is captured).
-2. **ZeroTrust gate** — current ephemeral token is checked; if risk-state is `high`, the message is shadow-banned (locally echoed, never sent).
-3. **Persist message** — written to `chat_messages` (Realtime push).
-4. **Classify** — `analyze-risk` runs rules + Gemini tool-call → returns structured risk.
-5. **Persist event** — `risk_events` row written with severity.
-6. **Trigger** — if `critical`, `trg_notify_critical_risk` fires `dispatch-critical-alert`.
-7. **Notify** — Twilio SMS to parent + email via  Email; row added to `alert_dispatches`.
-8. **Dashboard** — parent sees a new `AlertCard` in `/dashboard` with explanation + recommended action — never the raw message.
-9. **Digest** — daily/weekly cron aggregates the day's events into an HTML safety report.
-
----
-
-## 11. Installation & Setup
-
-### Requirements
-- Node 18+ and `bun` (or npm)
-- A  project with ** Cloud** enabled (provisions Postgres + Edge Functions automatically)
-- Twilio account (for SMS) — connected via  Standard Connectors
--  Email enabled (sender domain verified)
-
-### Setup
 ```bash
+git clone <repo>
+cd aegis
 bun install
-bun dev
+bun run dev
 ```
 
-### Environment variables (auto-provisioned by  Cloud)
-```
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_PUBLISHABLE_KEY=...
-VITE_SUPABASE_PROJECT_ID=...
-```
+This project is built and hosted on **Lovable**, so the Supabase project, edge functions, Resend, Twilio, and AI gateway are all provisioned through the Lovable Cloud integration. To self-host, you would need to recreate the schema (`supabase/migrations/`), deploy the functions in `supabase/functions/`, and provide:
 
-### Edge Function secrets (set in  Cloud)
-```
-LOVABLE_API_KEY            # AI Gateway
-TWILIO_ACCOUNT_SID
-TWILIO_AUTH_TOKEN
-TWILIO_FROM_NUMBER
-RESEND_API_KEY             # if using direct email instead of  Email
-```
+- `LOVABLE_API_KEY` (or any compatible OpenAI-style gateway key for Gemini / GPT-5)
+- `RESEND_API_KEY`
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
 
----
+## 9. Usage
 
-## 12. Usage
+- `/` — Landing page + AI spend meter (live, reads from `ai_usage`).
+- `/argus`, `/echo`, `/mnemosyne`, `/hermes`, `/aletheia` — interactive module demos.
+- `/dashboard` — parental command center (timeline, KPIs, executive summary, PDF export, fire-test alert, weekly digest).
+- `/companion` — preview of the planned on-device capture extension.
 
-| Route | Purpose |
-|---|---|
-| `/` | Landing page |
-| `/demo` | Live Argus chat — type messages, see real-time risk classification |
-| `/dashboard` | Parent view — alerts, digests, **Fire test alert** button |
-| `/helios` | Upload a screenshot for OCR + risk analysis |
-| `/echo` | Upload audio for voice grooming detection |
-| `/mnemosyne` | Upload an image — see auto-blur and block in action |
-| `/hermes` | LATAM signal map |
-| `/companion` | Mobile architecture concept (Android + iOS reference) |
+## 10. Costs
 
-**Typical workflow.** Open `/demo` in one tab and `/dashboard` in another. Send the message *"no le digas a tus papás, mándame una foto"* — watch the dashboard receive a critical alert and (if Twilio is configured) the parent phone receive an SMS within seconds.
+All AI cost is **metered per call** and tallied live on the home page from the `ai_usage` table. Pricing below is approximate and based on the AI gateway rates at build time.
 
----
+### 10.1 Per-call AI cost (current)
 
-## 13. Roadmap
+| Model                   | Input ($/1k tok) | Output ($/1k tok) | Typical call (Aegis) |
+|-------------------------|------------------|-------------------|----------------------|
+| Gemini 2.5 Flash        | 0.000075         | 0.000300          | ~$0.0002 / message   |
+| Gemini 2.5 Pro          | 0.00125          | 0.005             | ~$0.004 / image      |
+| GPT-5 mini              | ~0.00025         | ~0.002            | ~$0.002 / call       |
 
-- **Native Companion shell** — ship Android `AccessibilityService` + iOS `FamilyControls` apps.
-- **Federated learning** — train a per-region embedding of threat patterns without centralizing raw text.
-- **Real identity layer** — replace mocked RENAPO/INE with verifiable credentials (W3C VC).
-- **Predator graph** — link signals across devices to surface the same threat actor across multiple children.
-- **NGO/school dashboards** — multi-tenant Hermes with role-based access.
-- **Real-time voice streaming** — replace clip-based Echo with live pipeline.
-- **Photo blocklist via PhotoDNA / pdqhash** — server-side known-CSAM matching.
+Most modules (Argus, Echo, aegis-chat, executive-summary, generate-scenario) run on **Gemini 2.5 Flash**. Mnemosyne and Aletheia use **Gemini 2.5 Pro** for vision quality.
 
----
+### 10.2 Backend & infra (current)
 
-## 14. Risks & Limitations
+| Service                 | Tier used in demo            | Approx monthly cost |
+|-------------------------|------------------------------|---------------------|
+| Supabase (DB + edge fn) | Free tier (Lovable Cloud)    | $0 (within $25 free Cloud balance) |
+| Resend (email)          | Free dev tier                | $0 (≤ 3k emails/mo) |
+| Twilio (SMS)            | Pay-as-you-go                | ~$0.0079 per SMS to MX |
+| Lovable hosting         | Included in workspace plan   | $0 marginal         |
+| **Total infra (demo)**  |                              | **≈ $0–$5 / month** |
 
-**Technical**
-- LLM rate limits & cost at scale — mitigated by rules-as-floor and small model choice.
-- OCR / audio quality variance.
-- Browser perceptual hashing is weak vs. adversarial transforms (acceptable for the demo; production should use pdqhash server-side).
+### 10.3 End-to-end demo run cost
 
-**Business**
-- Parental trust is the primary adoption barrier — mitigated by zero-raw-content invariant.
-- Regulatory landscape varies country-by-country (Mexico's federal data-protection regime applies).
+A full demo run (≈ 30 chat messages + 5 voice clips + 5 images + 1 executive summary + 1 PDF export + 1 critical SMS) costs roughly:
 
-**AI-specific**
-- **Hallucination** — model could fabricate an explanation. Mitigated by tool-call schema and rules-as-floor.
-- **Bias** — Spanish dialects and indigenous languages are under-represented. Roadmap includes regional fine-tuning.
-- **False negatives on critical categories** — most dangerous failure mode. Mitigated by aggressive recall-over-precision tuning, rules-as-floor, and parent override.
-- **False positives** — fatigue parents. Mitigated by severity tiers; only `critical` triggers SMS.
+- AI: **~$0.04**
+- SMS: **~$0.01**
+- Email + DB + hosting: **~$0**
+- **Total: under $0.06 per full demo**
 
----
+### 10.4 Companion (future) — projected cost
 
-## 15. Contributing
+Companion adds on-device capture (iOS Safari Web Extension) and forwards structured events to Argus. The capture itself is free (runs on the user's device), but the back-end ingest grows with active users.
 
-1. Fork the repo / open in .
-2. Branch from `main`.
-3. Keep changes scoped — UI changes should not touch Edge Functions and vice versa.
-4. Run `bun run lint` and `bunx vitest run` before opening a PR.
-5. Never commit secrets; use  Cloud secret management.
-6. Preserve the privacy invariants: **no raw chat content in alerts, no PII in the ZeroTrust panel, no unbounded retention.**
+Assuming a **1,000 active minors** pilot with **~200 inspected messages / minor / day**:
 
----
+| Item                                       | Volume / month       | Unit cost           | Monthly cost |
+|--------------------------------------------|----------------------|---------------------|--------------|
+| Argus inference (Gemini 2.5 Flash)         | 6M messages          | ~$0.0002 / msg      | **~$1,200**  |
+| Image scans (Mnemosyne, Gemini 2.5 Pro)    | 30k images           | ~$0.004 / img       | **~$120**    |
+| Voice clips (Echo, Gemini 2.5 Flash multimodal) | 15k clips       | ~$0.0008 / clip     | **~$12**     |
+| Aletheia (deepfake checks, on-demand)      | 5k checks            | ~$0.005 / check     | **~$25**     |
+| Critical SMS fan-out (Twilio MX)           | ~2k alerts × 1 SMS   | $0.0079 / SMS       | **~$16**     |
+| Resend digests + criticals                 | ~30k emails          | $0.0004 / email     | **~$12**     |
+| Supabase (DB + edge invocations)           | upgrade to Pro       | $25 + usage         | **~$50**     |
+| **Estimated total (1k-user pilot)**        |                      |                     | **≈ $1,435 / month** |
 
-## 16. License
+That's roughly **$1.44 per protected minor per month** at the pilot scale, and falls to ~**$0.80 / minor / month** at 10k users once Gemini batch pricing and Twilio volume tiers kick in.
 
-MIT — see `LICENSE`. Built for educational and humanitarian use during Hackathon 404 (U.S. Embassy in Mexico). Production deployment requires legal review under local data-protection law.
+> The live "AI spend to date" meter on the home page reflects only inference cost, not Twilio/Resend/Supabase infra. SMS and infra costs are projected separately above.
+
+## 11. Roadmap
+
+- **v0.1 (now)** — full hackathon demo: 5 inference modules + dashboard + alerts + AI exec brief + PDF.
+- **v0.2** — ship Companion (iOS Safari Web Extension) into TestFlight; on-device pHash cache for repeat-image suppression.
+- **v0.3** — Hermes federated rollout with k-anonymity ≥ 50 enforced server-side; per-region risk heatmap.
+- **v0.4** — fine-tuned MX-Spanish slang model for Argus; offline fallback classifier on-device.
+- **v1.0** — school / NGO aggregate dashboard with exportable policy reports.
+
+## 12. Risks & Limitations
+
+- **Demo data, not production data.** Scenarios are AI-generated synthetic conversations.
+- **Model drift.** Slang and grooming tactics change; the classifier needs continuous evaluation.
+- **No content surfaced to parents.** This is by design; some parents may want more — we deliberately surface only metadata + recommended actions.
+- **AI gateway dependency.** Outage or rate-limit on the AI gateway degrades all modules to a neutral "no signal" state (never to false-positive critical).
+
+## 13. License
+
+Built for Hackathon 404 (U.S. Embassy in Mexico). Licensing TBD post-event.

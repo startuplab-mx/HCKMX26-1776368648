@@ -1,67 +1,71 @@
+@import "leaflet/dist/leaflet.css";
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@200,300,400,500,700,800,900&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import "leaflet/dist/leaflet.css";
-
 /* Guardian — protective, alert-driven design system.
+   Aegis editorial palette: off-white surface, deep navy, bold yellow accent.
    All colors HSL. No raw colors in components. */
 
 @layer base {
   :root {
-    --background: 220 30% 98%;
-    --foreground: 222 47% 11%;
+    --background: 220 14% 97%;
+    --foreground: 220 13% 5%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 13% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 13% 5%;
 
-    /* Trust blue */
-    --primary: 222 84% 32%;
+    /* Deep navy primary */
+    --primary: 218 71% 14%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 222 90% 55%;
+    --primary-glow: 217 91% 60%;
 
-    --secondary: 220 25% 94%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 13% 5%;
 
-    --muted: 220 20% 95%;
-    --muted-foreground: 220 10% 40%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 9% 35%;
 
-    --accent: 168 76% 42%;
-    --accent-foreground: 0 0% 100%;
+    /* Bold yellow accent */
+    --accent: 48 96% 53%;
+    --accent-foreground: 220 13% 5%;
 
-    --destructive: 0 84% 55%;
+    --destructive: 348 83% 47%;
     --destructive-foreground: 0 0% 100%;
 
     /* Severity tokens */
-    --severity-low: 142 70% 38%;
+    --severity-low: 162 76% 40%;
     --severity-low-foreground: 0 0% 100%;
-    --severity-medium: 35 95% 50%;
-    --severity-medium-foreground: 0 0% 100%;
-    --severity-critical: 0 84% 55%;
+    --severity-medium: 38 92% 50%;
+    --severity-medium-foreground: 220 13% 5%;
+    --severity-critical: 348 83% 47%;
     --severity-critical-foreground: 0 0% 100%;
 
     /* Chat sender tokens */
-    --minor-bubble: 222 60% 95%;
-    --minor-bubble-foreground: 222 47% 18%;
+    --minor-bubble: 48 96% 90%;
+    --minor-bubble-foreground: 220 13% 5%;
     --stranger-bubble: 0 0% 100%;
-    --stranger-bubble-foreground: 222 47% 11%;
+    --stranger-bubble-foreground: 220 13% 5%;
 
-    --border: 220 20% 88%;
-    --input: 220 20% 88%;
-    --ring: 222 84% 32%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 218 71% 14%;
 
-    --radius: 0.85rem;
+    --radius: 0.375rem;
 
-    --gradient-hero: linear-gradient(135deg, hsl(222 84% 14%) 0%, hsl(222 84% 32%) 50%, hsl(168 76% 32%) 100%);
-    --gradient-shield: linear-gradient(135deg, hsl(222 90% 55%), hsl(168 76% 42%));
-    --gradient-alert: linear-gradient(135deg, hsl(0 84% 55%), hsl(20 95% 55%));
+    --gradient-hero: linear-gradient(135deg, hsl(218 71% 10%) 0%, hsl(218 71% 14%) 60%, hsl(218 71% 20%) 100%);
+    --gradient-shield: linear-gradient(135deg, hsl(218 71% 14%), hsl(217 91% 40%));
+    --gradient-alert: linear-gradient(135deg, hsl(348 83% 47%), hsl(20 95% 55%));
 
-    --shadow-elevated: 0 20px 60px -20px hsl(222 84% 32% / 0.35);
-    --shadow-alert: 0 0 0 1px hsl(0 84% 55% / 0.5), 0 12px 32px -8px hsl(0 84% 55% / 0.35);
-    --shadow-card: 0 4px 16px -4px hsl(222 47% 11% / 0.08);
+    --shadow-elevated: 0 20px 60px -20px hsl(218 71% 14% / 0.35);
+    --shadow-alert: 0 0 0 1px hsl(348 83% 47% / 0.5), 0 12px 32px -8px hsl(348 83% 47% / 0.35);
+    --shadow-card: 0 4px 16px -4px hsl(220 13% 5% / 0.06);
 
     --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -76,30 +80,30 @@
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 222 90% 65%;
-    --primary-foreground: 222 47% 6%;
-    --primary-glow: 222 90% 75%;
-    --secondary: 222 30% 15%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 222 30% 14%;
-    --muted-foreground: 220 10% 65%;
-    --accent: 168 76% 50%;
-    --accent-foreground: 222 47% 6%;
-    --destructive: 0 75% 55%;
+    --background: 220 13% 5%;
+    --foreground: 220 14% 97%;
+    --card: 220 13% 8%;
+    --card-foreground: 220 14% 97%;
+    --popover: 220 13% 8%;
+    --popover-foreground: 220 14% 97%;
+    --primary: 48 96% 53%;
+    --primary-foreground: 220 13% 5%;
+    --primary-glow: 217 91% 60%;
+    --secondary: 220 13% 14%;
+    --secondary-foreground: 220 14% 97%;
+    --muted: 220 13% 14%;
+    --muted-foreground: 220 9% 65%;
+    --accent: 48 96% 53%;
+    --accent-foreground: 220 13% 5%;
+    --destructive: 348 83% 55%;
     --destructive-foreground: 0 0% 100%;
-    --minor-bubble: 222 50% 18%;
-    --minor-bubble-foreground: 210 40% 98%;
-    --stranger-bubble: 222 30% 14%;
-    --stranger-bubble-foreground: 210 40% 98%;
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 222 90% 65%;
+    --minor-bubble: 48 60% 18%;
+    --minor-bubble-foreground: 220 14% 97%;
+    --stranger-bubble: 220 13% 12%;
+    --stranger-bubble-foreground: 220 14% 97%;
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 48 96% 53%;
   }
 }
 
@@ -107,9 +111,10 @@
   * { @apply border-border; }
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "ss01", "cv11";
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   }
-  h1, h2, h3, h4 { @apply tracking-tight; }
+  h1, h2, h3, h4 { @apply tracking-tight; font-family: "Cabinet Grotesk", "IBM Plex Sans", sans-serif; }
+  code, .font-mono { font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace; }
 }
 
 @layer utilities {
@@ -119,6 +124,28 @@
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
   .shadow-alert { box-shadow: var(--shadow-alert); }
   .shadow-card { box-shadow: var(--shadow-card); }
+
+  .overline {
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.7rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Subtle architectural grid for hero sections */
+  .aegis-grid-bg {
+    background-image:
+      linear-gradient(to right, hsl(var(--primary) / 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.08) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .aegis-grid-bg-light {
+    background-image:
+      linear-gradient(to right, hsl(0 0% 100% / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(0 0% 100% / 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
 
   @keyframes pulse-alert {
     0%, 100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.55); }
@@ -138,3 +165,18 @@
   }
   .animate-fade-in-up { animation: fade-in-up 0.3s var(--transition-smooth); }
 }
+
+/* Keep Leaflet map below sticky header (z-40) and dialog overlay (z-50).
+   Default Leaflet panes use z-index 400-700, which would otherwise punch
+   through every overlay in the app. */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control { z-index: 1 !important; }
+.leaflet-tile-pane { z-index: 1 !important; }
+.leaflet-overlay-pane { z-index: 2 !important; }
+.leaflet-shadow-pane { z-index: 3 !important; }
+.leaflet-marker-pane { z-index: 4 !important; }
+.leaflet-tooltip-pane { z-index: 5 !important; }
+.leaflet-popup-pane { z-index: 6 !important; }
+.leaflet-container { z-index: 0; }

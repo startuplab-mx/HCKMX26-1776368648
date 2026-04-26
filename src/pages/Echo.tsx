@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Shield,
   Mic,
   Square,
   Loader2,
@@ -13,10 +11,58 @@ import {
   Trash2,
   Languages,
   Users,
+  Speaker,
+  ShieldCheck,
 } from "lucide-react";
 import { categoryLabels, type Severity } from "@/lib/utils";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { toast } from "sonner";
+import { AegisHeader } from "@/components/AegisHeader";
+import { AegisHero } from "@/components/AegisHero";
+import groomingEn from "@/assets/echo-samples/grooming-en.mp3";
+import narcoEs from "@/assets/echo-samples/narco-es.mp3";
+import infoExtractionEn from "@/assets/echo-samples/info-extraction-en.mp3";
+import benignEn from "@/assets/echo-samples/benign-en.mp3";
+
+type Sample = {
+  id: string;
+  title: string;
+  lang: string;
+  url: string;
+};
+
+const SAMPLES: Sample[] = [
+  { id: "grooming-en", title: "Grooming", lang: "en", url: groomingEn },
+  { id: "narco-es", title: "Narco Recruitment", lang: "es", url: narcoEs },
+  {
+    id: "info-extraction-en",
+    title: "Personal Info Extraction",
+    lang: "en",
+    url: infoExtractionEn,
+  },
+  { id: "benign-en", title: "Benign Conversation", lang: "en", url: benignEn },
+];
+
+async function urlToDataUrl(url: string): Promise<{ dataUrl: string; mime: string }> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+  return { dataUrl, mime: blob.type || "audio/mpeg" };
+}
+
+/** Insert simple line-breaks before each speaker label so the transcript reads cleanly. */
+function formatTranscript(t: string): string {
+  if (!t) return "(no speech detected)";
+  return t
+    .replace(/\s*(speaker_[a-z0-9]+|Speaker\s*[A-Z0-9]+)\s*:/gi, "\n$1:")
+    .replace(/^\n+/, "")
+    .trim();
+}
 
 type EchoResult = {
   transcript: string;
@@ -149,6 +195,62 @@ export default function Echo() {
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  const loadSample = useCallback(async (sample: Sample) => {
+    setError(null);
+    setResult(null);
+    try {
+      const { dataUrl, mime } = await urlToDataUrl(sample.url);
+      setAudioUrl(sample.url);
+      setAudioDataUrl(dataUrl);
+      setAudioMime(mime);
+      if (inputRef.current) inputRef.current.value = "";
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not load sample.";
+      setError(msg);
+      toast.error("Sample failed", { description: msg });
+    }
+  }, []);
+
+  async function persistCriticalEvent(r: EchoResult) {
+    // Persist Echo critical events into risk_events so the existing
+    // database trigger (notify_critical_risk) fires dispatch-critical-alert,
+    // which sends the Resend email + Twilio SMS to the parent on file.
+    try {
+      // Reuse a single "Echo demo" session so we don't spawn rows endlessly.
+      const { data: existing } = await supabase
+        .from("chat_sessions")
+        .select("id")
+        .eq("label", "Echo voice")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let sessionId = existing?.id as string | undefined;
+      if (!sessionId) {
+        const { data: created, error: cErr } = await supabase
+          .from("chat_sessions")
+          .insert({ label: "Echo voice" })
+          .select("id")
+          .single();
+        if (cErr) throw cErr;
+        sessionId = created.id;
+      }
+
+      const { error: insErr } = await supabase.from("risk_events").insert({
+        session_id: sessionId!,
+        category: r.category,
+        severity: r.severity,
+        risk_score: r.risk_score,
+        explanation: r.explanation,
+        recommended_action: r.recommended_action,
+        matched_patterns: r.audio_red_flags ?? [],
+      });
+      if (insErr) throw insErr;
+    } catch (e) {
+      console.warn("Echo: failed to persist critical event", e);
+    }
+  }
+
   async function analyze() {
     if (!audioDataUrl) return;
     setLoading(true);
@@ -167,6 +269,8 @@ export default function Echo() {
         toast.error(`Critical: ${categoryLabels[r.category] ?? r.category}`, {
           description: r.explanation,
         });
+        // Fire-and-forget: persist so the DB trigger sends the Resend email + SMS.
+        void persistCriticalEvent(r);
       } else if (r.severity === "medium") {
         toast.warning(`Caution: ${categoryLabels[r.category] ?? r.category}`, {
           description: r.explanation,
@@ -185,60 +289,62 @@ export default function Echo() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-shield text-primary-foreground shadow-elevated">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold leading-none">
-                Aegis
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                Echo · Voice analysis
-              </p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/mnemosyne"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Mnemosyne (image)
-            </Link>
-            <Link
-              to="/helios"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Helios (screen)
-            </Link>
-            <Link
-              to="/dashboard"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AegisHeader
+        module="Echo"
+        tagline="voice analysis"
+        links={[
+          { label: "Argus", href: "/demo" },
+          { label: "Helios", href: "/helios" },
+          { label: "Mnemosyne", href: "/mnemosyne" },
+          { label: "Hermes", href: "/hermes" },
+          { label: "Aletheia", href: "/aletheia" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+        showTrust
+        showBackHome
+      />
 
-      <section className="border-b border-border bg-gradient-hero text-primary-foreground">
-        <div className="mx-auto max-w-[1400px] px-6 py-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest backdrop-blur">
-            <Mic className="h-3 w-3" />
-            Echo — initiative #2
-          </div>
-          <h1 className="mt-4 font-display text-3xl font-bold sm:text-4xl">
-            Hear what's happening on the headset.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80 sm:text-base">
+      <AegisHero
+        eyebrow="Echo · voice intelligence"
+        icon={Mic}
+        title="Hear what's happening on the headset."
+        description={
+          <>
             Echo is the voice layer of Aegis — designed for game voice chats,
             Discord calls and voice notes where Argus can't read messages. It
             transcribes, detects adult-to-minor patterns, and classifies risk.
-          </p>
+          </>
+        }
+      />
+
+      {/* Samples strip + privacy pill */}
+      <div className="mx-auto max-w-[1400px] px-4 lg:px-6">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              one-tap samples
+            </span>
+            {SAMPLES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => loadSample(s)}
+                disabled={loading || recording}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Speaker className="h-3.5 w-3.5 text-primary" />
+                {s.title}
+                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {s.lang}
+                </span>
+              </button>
+            ))}
+          </div>
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-severity-low/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-severity-low">
+            <ShieldCheck className="h-3 w-3" />
+            Privacy · audio discarded after transcription
+          </span>
         </div>
-      </section>
+      </div>
 
       <main className="mx-auto grid max-w-[1400px] gap-6 px-4 py-8 lg:grid-cols-[1fr_1fr] lg:px-6">
         {/* Left: recorder / upload */}
@@ -268,10 +374,10 @@ export default function Echo() {
               <button
                 onClick={recording ? stopRecording : startRecording}
                 className={
-                  "flex h-24 w-24 items-center justify-center rounded-full text-primary-foreground shadow-elevated transition-transform hover:scale-105 " +
+                  "flex h-24 w-24 items-center justify-center rounded-full text-white shadow-elevated transition-transform hover:scale-105 " +
                   (recording
-                    ? "bg-gradient-alert animate-pulse-alert"
-                    : "bg-gradient-shield")
+                    ? "bg-severity-critical animate-pulse-alert"
+                    : "bg-severity-critical hover:bg-severity-critical/90")
                 }
                 aria-label={recording ? "Stop recording" : "Start recording"}
               >
@@ -348,7 +454,7 @@ export default function Echo() {
 
         {/* Right: results */}
         <section className="rounded-2xl border border-border bg-card shadow-card">
-          <div className="flex items-center justify-between border-b border-border bg-gradient-hero px-5 py-4 text-primary-foreground">
+          <div className="flex items-center justify-between border-b border-border bg-primary px-5 py-4 text-primary-foreground">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
                 Voice analysis
@@ -496,7 +602,7 @@ export default function Echo() {
                     Transcript
                   </summary>
                   <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-border bg-muted/30 p-4 font-mono text-[11px] leading-relaxed text-foreground">
-                    {result.transcript || "(no speech detected)"}
+                    {formatTranscript(result.transcript)}
                   </pre>
                 </details>
               </>

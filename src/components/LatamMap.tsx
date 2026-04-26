@@ -1,6 +1,5 @@
-import { useMemo } from "react";
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, ZoomControl } from "react-leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
+import { useEffect, useMemo, useRef } from "react";
+import L, { type LatLngBoundsExpression } from "leaflet";
 
 export type MapSignal = {
   id: string;
@@ -29,10 +28,10 @@ const SOURCE_COLOR: Record<string, string> = {
   mnemosyne: "hsl(0, 84%, 55%)",
 };
 
-// Bounds covering LATAM (roughly from southern US down to southern Argentina)
+// Bounds covering Mexico
 const LATAM_BOUNDS: LatLngBoundsExpression = [
-  [-40, -120], // SW
-  [33, -34],   // NE
+  [14, -118], // SW
+  [33, -86],  // NE
 ];
 
 interface Props {
@@ -44,89 +43,91 @@ interface Props {
 export function LatamMap({ signals, heat, onSelect }: Props) {
   // Cap recent rendered pings
   const visible = useMemo(() => signals.slice(0, 60), [signals]);
+  const mapEl = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const layerRef = useRef<L.LayerGroup | null>(null);
+  const onSelectRef = useRef(onSelect);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  useEffect(() => {
+    if (!mapEl.current || mapRef.current) return;
+
+    const map = L.map(mapEl.current, {
+      scrollWheelZoom: false,
+      zoomControl: false,
+      attributionControl: true,
+      maxBoundsViscosity: 0.25,
+    });
+
+    map.fitBounds(LATAM_BOUNDS, { padding: [12, 12] });
+    map.setMaxBounds(LATAM_BOUNDS);
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution:
+        '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: ["a", "b", "c", "d"],
+    }).addTo(map);
+
+    const layer = L.layerGroup().addTo(map);
+    mapRef.current = map;
+    layerRef.current = layer;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      layerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer) return;
+
+    layer.clearLayers();
+
+    heat.forEach((r) => {
+      const radius = Math.min(10 + r.count * 1.5, 36);
+      L.circleMarker([r.lat, r.lng], {
+        radius,
+        color: "hsl(0, 84%, 55%)",
+        fillColor: "hsl(0, 84%, 55%)",
+        fillOpacity: 0.15,
+        weight: 1,
+        opacity: 0.4,
+        interactive: false,
+      }).addTo(layer);
+    });
+
+    visible.forEach((s) => {
+      const color = SOURCE_COLOR[s.source] ?? "hsl(222, 84%, 32%)";
+      const isHigh = s.risk_score >= 0.7;
+      const marker = L.circleMarker([s.lat, s.lng], {
+        radius: isHigh ? 7 : 5,
+        color,
+        fillColor: color,
+        fillOpacity: 0.85,
+        weight: 1.5,
+      });
+
+      marker.bindTooltip(
+        `<div class="text-xs"><strong>${s.category}</strong> · ${s.risk_score.toFixed(2)}<br /><span class="text-muted-foreground">${s.region}</span></div>`,
+        { direction: "top", offset: [0, -4], opacity: 0.95 },
+      );
+      marker.bindPopup(
+        `<div class="text-xs"><p class="font-semibold capitalize">${s.source} · ${s.category}</p><p class="mt-1">Risk score: <strong>${s.risk_score.toFixed(2)}</strong></p><p>Region: ${s.region}</p><p>Platform: ${s.platform}</p><p class="font-mono text-[10px] text-muted-foreground">${s.device_id}</p></div>`,
+      );
+      marker.on("click", () => onSelectRef.current?.(s));
+      marker.addTo(layer);
+    });
+  }, [heat, visible]);
 
   return (
     <div className="relative h-[420px] w-full overflow-hidden rounded-xl border border-border">
-      <MapContainer
-        bounds={LATAM_BOUNDS}
-        scrollWheelZoom={false}
-        zoomControl={false}
-        className="h-full w-full"
-        style={{ background: "hsl(var(--muted))" }}
-      >
-        <ZoomControl position="bottomright" />
-        {/* Free OSM tiles - Carto light theme matches our design system */}
-        <TileLayer
-          attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          subdomains={["a", "b", "c", "d"]}
-        />
-
-        {/* Region heat (aggregated) */}
-        {heat.map((r) => {
-          const radius = Math.min(10 + r.count * 1.5, 36);
-          return (
-            <CircleMarker
-              key={`heat-${r.name}`}
-              center={[r.lat, r.lng]}
-              radius={radius}
-              pathOptions={{
-                color: "hsl(0, 84%, 55%)",
-                fillColor: "hsl(0, 84%, 55%)",
-                fillOpacity: 0.15,
-                weight: 1,
-                opacity: 0.4,
-              }}
-              interactive={false}
-            />
-          );
-        })}
-
-        {/* Individual signal pings */}
-        {visible.map((s) => {
-          const color = SOURCE_COLOR[s.source] ?? "hsl(222, 84%, 32%)";
-          const isHigh = s.risk_score >= 0.7;
-          return (
-            <CircleMarker
-              key={s.id}
-              center={[s.lat, s.lng]}
-              radius={isHigh ? 7 : 5}
-              pathOptions={{
-                color,
-                fillColor: color,
-                fillOpacity: 0.85,
-                weight: 1.5,
-              }}
-              eventHandlers={{
-                click: () => onSelect?.(s),
-              }}
-            >
-              <Tooltip direction="top" offset={[0, -4]} opacity={0.95}>
-                <div className="text-xs">
-                  <strong>{s.category}</strong> · {s.risk_score.toFixed(2)}
-                  <br />
-                  <span className="text-muted-foreground">{s.region}</span>
-                </div>
-              </Tooltip>
-              <Popup>
-                <div className="text-xs">
-                  <p className="font-semibold capitalize">
-                    {s.source} · {s.category}
-                  </p>
-                  <p className="mt-1">
-                    Risk score: <strong>{s.risk_score.toFixed(2)}</strong>
-                  </p>
-                  <p>Region: {s.region}</p>
-                  <p>Platform: {s.platform}</p>
-                  <p className="font-mono text-[10px] text-muted-foreground">
-                    {s.device_id}
-                  </p>
-                </div>
-              </Popup>
-            </CircleMarker>
-          );
-        })}
-      </MapContainer>
+      <div ref={mapEl} className="h-full w-full bg-muted" />
     </div>
   );
 }

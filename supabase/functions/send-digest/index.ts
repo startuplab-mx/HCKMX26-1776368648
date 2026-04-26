@@ -23,26 +23,27 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 async function sendEmail(to: string, subject: string, html: string, text: string) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+  // Send via Resend through the Lovable connector gateway (same path as dispatch-critical-alert).
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!lovableKey || !resendKey) {
+    throw new Error("Resend credentials not configured (LOVABLE_API_KEY / RESEND_API_KEY).");
+  }
+  const from = Deno.env.get("RESEND_FROM") ?? "Aegis Digest <onboarding@resend.dev>";
+  const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serviceKey}`,
+      Authorization: `Bearer ${lovableKey}`,
+      "X-Connection-Api-Key": resendKey,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      templateName: "aegis-digest",
-      recipientEmail: to,
-      idempotencyKey: `digest-${subject}-${to}-${Date.now()}`,
-      templateData: { subject, html, text },
-    }),
+    body: JSON.stringify({ from, to: [to], subject, html, text }),
   });
+  const data = await res.json();
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Email function failed [${res.status}]: ${body.slice(0, 300)}`);
+    throw new Error(`Resend send failed [${res.status}]: ${JSON.stringify(data).slice(0, 400)}`);
   }
-  return await res.json();
+  return { id: data.id, from };
 }
 
 Deno.serve(async (req) => {
@@ -181,7 +182,7 @@ Open the dashboard for full context.`;
           sent: false,
           period,
           error: msg,
-          hint: "Set up the Lovable email domain to enable digests.",
+          hint: "Resend rejected the send. Verify a domain in Resend or use the default onboarding@resend.dev sender.",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

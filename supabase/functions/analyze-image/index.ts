@@ -45,12 +45,13 @@ You receive a SINGLE image from a minor's device or camera roll. Your job is to 
 
 Detection priorities (false negatives are dangerous):
 1. Any nudity, partial nudity, lingerie, swimwear in suggestive context, or intimate self-generated content.
-2. Visible identifying info: school uniform with logo, home address, license plate, ID card, geo-tagged landmarks, full face + location combo.
+2. Visible identifying info: school uniform with logo, home address, license plate, ID card, geo-tagged landmarks, full face + location combo. Text on signs, IDs or uniforms may appear in SPANISH or ENGLISH — read both.
 3. Weapons, drugs, alcohol use by minors.
 4. Signs the subject is under 18 (treat any such case as critical).
 
 Rules:
 - NEVER describe the body or quote sensitive info verbatim. Describe the pattern only ("intimate self-portrait", "school uniform visible").
+- The "explanation" and "recommended_action" fields MUST be in English (those go to the parent dashboard) even when the image text is Spanish.
 - Output ONLY by calling the function "analyze_image".`;
 
     const res = await fetch(

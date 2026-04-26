@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  Shield,
-  ArrowLeft,
   Network,
   Lock,
   Radio,
@@ -15,9 +12,15 @@ import {
   Server,
   Smartphone,
   ShieldCheck,
+  Gamepad2,
+  Laptop,
+  Tablet,
+  Tv,
 } from "lucide-react";
 import { categoryLabels } from "@/lib/utils";
 import { LatamMap } from "@/components/LatamMap";
+import { AegisHeader } from "@/components/AegisHeader";
+import { AegisHero } from "@/components/AegisHero";
 
 /**
  * Hermes — federated, privacy-preserving signal network.
@@ -33,7 +36,6 @@ type Source = "argus" | "echo" | "helios" | "mnemosyne";
 type Platform =
   | "whatsapp"
   | "instagram_dm"
-  | "tiktok_dm"
   | "roblox_chat"
   | "discord"
   | "fortnite_voice"
@@ -66,7 +68,6 @@ const SOURCES: Record<Source, { label: string; color: string }> = {
 const PLATFORM_LABEL: Record<Platform, string> = {
   whatsapp: "WhatsApp",
   instagram_dm: "Instagram DM",
-  tiktok_dm: "TikTok DM",
   roblox_chat: "Roblox chat",
   discord: "Discord",
   fortnite_voice: "Fortnite voice",
@@ -74,7 +75,7 @@ const PLATFORM_LABEL: Record<Platform, string> = {
   free_fire: "Free Fire",
 };
 
-// LATAM hot-spot cities with approx. lat/lng (mapped into a stylized SVG grid)
+// Mexican hot-spot cities with approx. lat/lng
 const REGIONS: { name: string; lat: number; lng: number }[] = [
   { name: "CDMX", lat: 19.43, lng: -99.13 },
   { name: "Guadalajara", lat: 20.67, lng: -103.35 },
@@ -84,11 +85,11 @@ const REGIONS: { name: string; lat: number; lng: number }[] = [
   { name: "Mérida", lat: 20.97, lng: -89.62 },
   { name: "Cancún", lat: 21.16, lng: -86.85 },
   { name: "Ciudad Juárez", lat: 31.69, lng: -106.42 },
-  { name: "Bogotá, CO", lat: 4.71, lng: -74.07 },
-  { name: "Lima, PE", lat: -12.04, lng: -77.04 },
-  { name: "Buenos Aires, AR", lat: -34.6, lng: -58.38 },
-  { name: "Santiago, CL", lat: -33.45, lng: -70.66 },
-  { name: "São Paulo, BR", lat: -23.55, lng: -46.63 },
+  { name: "León", lat: 21.12, lng: -101.68 },
+  { name: "Querétaro", lat: 20.59, lng: -100.39 },
+  { name: "Toluca", lat: 19.29, lng: -99.66 },
+  { name: "Acapulco", lat: 16.86, lng: -99.88 },
+  { name: "Oaxaca", lat: 17.07, lng: -96.72 },
 ];
 
 const RISK_CATEGORIES = [
@@ -106,7 +107,6 @@ const RISK_CATEGORIES = [
 const PLATFORMS: Platform[] = [
   "whatsapp",
   "instagram_dm",
-  "tiktok_dm",
   "roblox_chat",
   "discord",
   "fortnite_voice",
@@ -243,90 +243,64 @@ export default function Hermes() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-shield text-primary-foreground shadow-elevated">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold leading-none">
-                Aegis
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                Hermes · federated signals
-              </p>
-            </div>
-          </Link>
-          <Link
-            to="/"
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Home
-          </Link>
-        </div>
-      </header>
+      <AegisHeader
+        module="Hermes"
+        tagline="federated signals"
+        links={[
+          { label: "Argus", href: "/demo" },
+          { label: "Echo", href: "/echo" },
+          { label: "Helios", href: "/helios" },
+          { label: "Mnemosyne", href: "/mnemosyne" },
+          { label: "Aletheia", href: "/aletheia" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+        showTrust
+        showBackHome
+      />
 
-      <main className="mx-auto max-w-[1400px] px-4 py-6 lg:px-6">
-        {/* Hero strip */}
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-hero p-6 text-primary-foreground shadow-elevated">
-          <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_15%_20%,hsl(168_76%_50%/0.4),transparent_55%),radial-gradient(circle_at_85%_70%,hsl(222_90%_55%/0.5),transparent_55%)]" />
-          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                Live federated stream
-              </div>
-              <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">
-                Every device makes the network smarter.
-              </h1>
-              <p className="mt-3 max-w-xl text-sm text-primary-foreground/80 sm:text-base">
-                Hermes aggregates anonymized risk signals from Argus, Echo,
-                Helios and Mnemosyne running on each child's device. Raw
-                conversations never leave the phone — only{" "}
-                <strong>category, score and coarse region</strong>.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPaused((p) => !p)}
-                className="flex items-center gap-2 rounded-full bg-primary-foreground/15 px-4 py-2 text-xs font-semibold backdrop-blur transition hover:bg-primary-foreground/25"
-              >
-                <Radio className={`h-3.5 w-3.5 ${paused ? "" : "animate-pulse"}`} />
-                {paused ? "Resume stream" : "Pause stream"}
-              </button>
+      <AegisHero
+        eyebrow="Hermes · live federated stream"
+        icon={Network}
+        title="Every device makes the network smarter."
+        description={
+          <>
+            Hermes aggregates anonymized risk signals from Argus, Echo, Helios
+            and Mnemosyne running on each child's device. Raw conversations
+            never leave the phone — only{" "}
+            <strong className="text-foreground">category, score and coarse region</strong>.
+          </>
+        }
+        rightSlot={
+          <div className="rounded-md border border-border bg-card p-5 shadow-card">
+            <div className="overline mb-3">Stream control</div>
+            <button
+              onClick={() => setPaused((p) => !p)}
+              className={
+                "mb-4 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 " +
+                (paused
+                  ? "bg-severity-low"
+                  : "bg-severity-critical")
+              }
+            >
+              <Radio className={`h-3.5 w-3.5 ${paused ? "" : "animate-pulse"}`} />
+              {paused ? "Resume stream" : "Pause stream"}
+            </button>
+            <div className="grid grid-cols-2 gap-3 text-left">
+              <HeroStat icon={Globe2} k={signals.length.toString()} v="signals" />
+              <HeroStat icon={Zap} k={stats.critical.toString()} v="high-risk" />
+              <HeroStat icon={Lock} k="0 KB" v="raw shared" />
+              <HeroStat icon={ShieldCheck} k={regionHeat.length.toString()} v="regions" />
             </div>
           </div>
+        }
+      />
 
-          <div className="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <HeroStat
-              icon={Globe2}
-              k={signals.length.toString()}
-              v="signals on map"
-            />
-            <HeroStat
-              icon={Zap}
-              k={stats.critical.toString()}
-              v="high-risk pings"
-            />
-            <HeroStat
-              icon={Lock}
-              k="0 KB"
-              v="raw content shared"
-            />
-            <HeroStat
-              icon={ShieldCheck}
-              k={regionHeat.length.toString()}
-              v="active regions"
-            />
-          </div>
-        </section>
+      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-12">
 
         {/* Map + Live feed */}
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
           <Panel
-            title="Anonymized signal map · LATAM"
+            title="Anonymized signal map · México"
             subtitle="Real OpenStreetMap tiles. Each ping is a flagged event from a child's device. No identities, no content."
             icon={Globe2}
           >
@@ -408,53 +382,31 @@ export default function Hermes() {
           </Panel>
         </div>
 
-        {/* Privacy proof + Aggregates */}
+        {/* AI Insights + Aggregates */}
         <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
           <Panel
-            title="What leaves the device?"
-            subtitle="The exact JSON payload — privacy is verifiable, not just promised."
-            icon={Lock}
+            title="AI-generated insights"
+            subtitle="What the federated model is learning across devices, right now."
+            icon={Sparkles}
             headerRight={
-              <button
-                onClick={() => setShowRaw((v) => !v)}
-                className="flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-              >
-                {showRaw ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                {showRaw ? "Hide" : "Show"} payload
-              </button>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                Live
+              </span>
             }
           >
-            <pre className="max-h-[280px] overflow-auto rounded-xl bg-foreground/95 p-4 font-mono text-[11px] leading-relaxed text-background">
-{showRaw && selected
-  ? JSON.stringify(
-      {
-        device_id: selected.device_id,
-        source: selected.source,
-        platform: selected.platform,
-        category: selected.category,
-        risk_score: selected.risk_score,
-        region_coarse: selected.region,
-        ts: new Date(selected.ts).toISOString(),
-        content_stored: false,
-        message_text: null,
-        sender_handle: null,
-      },
-      null,
-      2,
-    )
-  : `{
-  "device_id": "dev_a8f3b2c1",     // anonymous, rotating
-  "source": "argus",                // which detector
-  "platform": "instagram_dm",       // app type, not account
-  "category": "grooming",
-  "risk_score": 0.87,
-  "region_coarse": "CDMX",          // city, never GPS
-  "ts": "2026-04-25T14:21:09Z",
-  "content_stored": false,          // ✅ never
-  "message_text": null,             // ✅ never
-  "sender_handle": null             // ✅ never
-}`}
-            </pre>
+            <ul className="space-y-2.5">
+              {buildInsights(stats, signals.length).map((s, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-2.5 rounded-lg border border-border bg-background/60 p-3"
+                >
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                    <Zap className="h-3 w-3" />
+                  </span>
+                  <p className="text-xs leading-relaxed text-foreground">{s}</p>
+                </li>
+              ))}
+            </ul>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {[
                 { icon: Lock, label: "On-device inference" },
@@ -508,37 +460,113 @@ export default function Hermes() {
           </Panel>
         </div>
 
-        {/* Architecture / future */}
+        {/* Per-device breakdown */}
         <Panel
           className="mt-6"
-          title="Roadmap → true federated learning"
-          subtitle="Hackathon: simulated signals. Production: on-device model updates with secure aggregation."
-          icon={Network}
+          title="Per-device breakdown"
+          subtitle="Children move across console voice, phone DMs, school laptops, family tablets and Smart TVs. Hermes shows the cross-device pattern."
+          icon={Smartphone}
         >
-          <div className="grid gap-4 md:grid-cols-3">
-            <ArchStep
-              icon={Smartphone}
-              step="1"
-              title="On-device classifiers"
-              desc="Argus, Echo, Helios and Mnemosyne run lightweight models locally. Raw conversations never leave the phone."
-              status="Today"
-            />
-            <ArchStep
-              icon={Radio}
-              step="2"
-              title="Anonymized signal upload"
-              desc="Only category + score + coarse region + platform are emitted, batched and noised before transit."
-              status="Today (simulated)"
-            />
-            <ArchStep
-              icon={Server}
-              step="3"
-              title="Secure aggregation"
-              desc="Federated averaging combines gradients across thousands of devices to retrain without ever seeing one child's data."
-              status="Future"
-            />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {buildDeviceBreakdown(signals).map((d) => (
+              <DeviceCard key={d.kind} d={d} />
+            ))}
           </div>
         </Panel>
+
+        {/* Architecture / future + Privacy payload */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <Panel
+            title="Roadmap → true federated learning"
+            subtitle="Hackathon: simulated signals. Production: on-device model updates with secure aggregation."
+            icon={Network}
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <ArchStep
+                icon={Smartphone}
+                step="1"
+                title="On-device classifiers"
+                desc="Argus, Echo, Helios and Mnemosyne run lightweight models locally. Raw conversations never leave the phone."
+                status="Today"
+              />
+              <ArchStep
+                icon={Radio}
+                step="2"
+                title="Anonymized signal upload"
+                desc="Only category + score + coarse region + platform are emitted, batched and noised before transit."
+                status="Today (simulated)"
+              />
+              <ArchStep
+                icon={Server}
+                step="3"
+                title="Secure aggregation"
+                desc="Federated averaging combines gradients across thousands of devices to retrain without ever seeing one child's data."
+                status="Future"
+              />
+            </div>
+          </Panel>
+
+          <Panel
+            title="What leaves the device?"
+            subtitle="The exact JSON payload — privacy is verifiable, not just promised."
+            icon={Lock}
+            headerRight={
+              <button
+                onClick={() => setShowRaw((v) => !v)}
+                className="flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+              >
+                {showRaw ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                {showRaw ? "Hide" : "Show"} payload
+              </button>
+            }
+          >
+            {showRaw ? (
+              <pre className="max-h-[280px] overflow-auto rounded-xl bg-foreground/95 p-4 font-mono text-[11px] leading-relaxed text-background">
+{selected
+  ? JSON.stringify(
+      {
+        device_id: selected.device_id,
+        source: selected.source,
+        platform: selected.platform,
+        category: selected.category,
+        risk_score: selected.risk_score,
+        region_coarse: selected.region,
+        ts: new Date(selected.ts).toISOString(),
+        content_stored: false,
+        message_text: null,
+        sender_handle: null,
+      },
+      null,
+      2,
+    )
+  : `{
+  "device_id": "dev_a8f3b2c1",     // anonymous, rotating
+  "source": "argus",                // which detector
+  "platform": "instagram_dm",       // app type, not account
+  "category": "grooming",
+  "risk_score": 0.87,
+  "region_coarse": "CDMX",          // city, never GPS
+  "ts": "2026-04-25T14:21:09Z",
+  "content_stored": false,          // never
+  "message_text": null,             // never
+  "sender_handle": null             // never
+}`}
+            </pre>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border bg-background/60 p-6 text-center">
+                <Lock className="mx-auto mb-2 h-5 w-5 text-primary" />
+                <p className="text-xs font-semibold text-foreground">
+                  Payload hidden by default
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Click <strong>Show payload</strong> to inspect the exact JSON
+                  that leaves the device. Tap a signal on the map to view a
+                  real one.
+                </p>
+              </div>
+            )}
+          </Panel>
+        </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Hermes is the network effect. Every flagged grooming attempt in Cancún
@@ -560,14 +588,12 @@ function HeroStat({
   v: string;
 }) {
   return (
-    <div className="rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 p-3 backdrop-blur">
-      <div className="flex items-center gap-2 text-primary-foreground/70">
-        <Icon className="h-3.5 w-3.5" />
-        <p className="text-[10px] font-semibold uppercase tracking-widest">
-          {v}
-        </p>
+    <div className="rounded-md border border-border bg-secondary/40 p-2.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="h-3 w-3" />
+        <p className="overline" style={{ fontSize: "0.55rem" }}>{v}</p>
       </div>
-      <p className="mt-1 font-display text-2xl font-bold">{k}</p>
+      <p className="mt-0.5 font-display text-xl font-bold tracking-tight text-primary">{k}</p>
     </div>
   );
 }
@@ -672,7 +698,7 @@ function ArchStep({
   return (
     <div className="relative rounded-xl border border-border bg-background/60 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-shield text-primary-foreground">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Icon className="h-4 w-4" />
         </div>
         <span
@@ -691,6 +717,232 @@ function ArchStep({
       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
         {desc}
       </p>
+    </div>
+  );
+}
+
+// ---- AI insight builder (deterministic, derived from current stats) ----
+function buildInsights(
+  stats: {
+    critical: number;
+    topCategory: [string, number][];
+    topPlatform: [Platform, number][];
+    topRegion: [string, number][];
+    bySource: Map<Source, number>;
+  },
+  total: number,
+): string[] {
+  const out: string[] = [];
+  if (total === 0) {
+    return ["Waiting for federated signals from the device fleet…"];
+  }
+  const [topCat] = stats.topCategory;
+  const [topPlat] = stats.topPlatform;
+  const [topRegion] = stats.topRegion;
+  if (topCat) {
+    out.push(
+      `Cross-device pattern: ${categoryLabels[topCat[0]] ?? topCat[0]} accounts for ~${Math.round(
+        (topCat[1] / total) * 100,
+      )}% of all flagged signals in the last window.`,
+    );
+  }
+  if (topPlat && topRegion) {
+    out.push(
+      `${PLATFORM_LABEL[topPlat[0]]} in ${topRegion[0]} is the hottest combination — Hermes recommends prioritizing parental notifications there.`,
+    );
+  }
+  if (stats.critical > 0) {
+    out.push(
+      `${stats.critical} high-risk events detected (score ≥ 0.70). Recommend escalating to Argus/Mnemosyne review queue.`,
+    );
+  }
+  const echoCount = stats.bySource.get("echo") ?? 0;
+  const heliosCount = stats.bySource.get("helios") ?? 0;
+  if (echoCount > 0 && heliosCount > 0) {
+    out.push(
+      `Voice (Echo) and screen (Helios) signals are co-occurring — likely the same conversation surfaced across two modalities on the same device.`,
+    );
+  }
+  return out.slice(0, 4);
+}
+
+// ---- Per-device breakdown (aggregated by device kind across the fleet) ----
+type DeviceKind = "phone" | "console" | "laptop" | "tablet" | "tv";
+
+const DEVICE_KIND_LABEL: Record<DeviceKind, string> = {
+  phone: "Phone",
+  console: "Console",
+  laptop: "Laptop",
+  tablet: "Tablet",
+  tv: "Smart TV",
+};
+
+const DEVICE_KIND_ICON: Record<
+  DeviceKind,
+  React.ComponentType<{ className?: string }>
+> = {
+  phone: Smartphone,
+  console: Gamepad2,
+  laptop: Laptop,
+  tablet: Tablet,
+  tv: Tv,
+};
+
+const DEVICE_KIND_DESC: Record<DeviceKind, string> = {
+  phone: "WhatsApp, Instagram DM, Snapchat, Free Fire",
+  console: "Fortnite voice & party chat",
+  laptop: "Discord, school browser sessions",
+  tablet: "Roblox chat, family-shared games",
+  tv: "Smart TV apps & casting surfaces",
+};
+
+const DEVICE_ORDER: DeviceKind[] = ["phone", "console", "laptop", "tablet", "tv"];
+
+const PLATFORM_KIND: Record<Platform, DeviceKind> = {
+  whatsapp: "phone",
+  instagram_dm: "phone",
+  snapchat: "phone",
+  roblox_chat: "tablet",
+  discord: "laptop",
+  fortnite_voice: "console",
+  free_fire: "phone",
+};
+
+function buildDeviceBreakdown(signals: Signal[]) {
+  // Aggregate by DEVICE KIND only — this combines results across all
+  // anonymous devices and regions in the simulated fleet.
+  const map = new Map<DeviceKind, Signal[]>();
+  for (const s of signals) {
+    const kind = PLATFORM_KIND[s.platform];
+    if (!map.has(kind)) map.set(kind, []);
+    map.get(kind)!.push(s);
+  }
+  return DEVICE_ORDER.filter((k) => map.has(k)).map((kind) => {
+    const arr = map.get(kind)!;
+    const critical = arr.filter((s) => s.risk_score >= 0.7).length;
+    const medium = arr.filter(
+      (s) => s.risk_score >= 0.5 && s.risk_score < 0.7,
+    ).length;
+    const low = arr.length - critical - medium;
+    const avg =
+      arr.reduce((sum, s) => sum + s.risk_score, 0) / Math.max(1, arr.length);
+    const catCount = new Map<string, number>();
+    for (const s of arr)
+      catCount.set(s.category, (catCount.get(s.category) ?? 0) + 1);
+    const top_categories = Array.from(catCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([category, count]) => ({ category, count }));
+    const unique_devices = new Set(arr.map((s) => s.device_id)).size;
+    return {
+      kind,
+      label: DEVICE_KIND_LABEL[kind],
+      desc: DEVICE_KIND_DESC[kind],
+      signal_count: arr.length,
+      unique_devices,
+      critical,
+      medium,
+      low,
+      avg_risk: avg,
+      top_categories,
+    };
+  });
+}
+
+function DeviceCard({
+  d,
+}: {
+  d: ReturnType<typeof buildDeviceBreakdown>[number];
+}) {
+  const total = d.signal_count || 1;
+  const critPct = (d.critical / total) * 100;
+  const medPct = (d.medium / total) * 100;
+  const lowPct = (d.low / total) * 100;
+  const tone =
+    d.critical > 0
+      ? "border-severity-critical/40"
+      : d.medium > 0
+        ? "border-severity-medium/40"
+        : "border-border";
+
+  const KindIcon = DEVICE_KIND_ICON[d.kind];
+
+  return (
+    <div className={`rounded-xl border ${tone} bg-background/60 p-4`}>
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+            <KindIcon className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="font-display text-sm font-bold tracking-tight">
+              {d.label}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {d.desc}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="overline text-[9px]">signals</p>
+          <p className="font-display text-2xl font-black leading-none tracking-tight text-foreground">
+            {d.signal_count}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex h-2 overflow-hidden rounded-sm bg-muted">
+        {critPct > 0 && (
+          <div className="bg-severity-critical" style={{ width: `${critPct}%` }} />
+        )}
+        {medPct > 0 && (
+          <div className="bg-severity-medium" style={{ width: `${medPct}%` }} />
+        )}
+        {lowPct > 0 && (
+          <div className="bg-severity-low" style={{ width: `${lowPct}%` }} />
+        )}
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-2 font-mono text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-1.5 w-1.5 rounded-sm bg-severity-critical" />
+          C {d.critical}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-1.5 w-1.5 rounded-sm bg-severity-medium" />
+          M {d.medium}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-1.5 w-1.5 rounded-sm bg-severity-low" />
+          L {d.low}
+        </span>
+      </div>
+
+      <div className="mt-3">
+        <p className="overline mb-1 text-[9px]">top categories</p>
+        <div className="flex flex-wrap gap-1.5">
+          {d.top_categories.length === 0 && (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+          {d.top_categories.map((c) => (
+            <span
+              key={c.category}
+              className="inline-flex items-center rounded-sm bg-muted px-2 py-0.5 text-[10px] text-foreground"
+            >
+              {categoryLabels[c.category] ?? c.category.replace(/_/g, " ")} ·{" "}
+              {c.count}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
+        <span className="font-mono">
+          avg risk · {Math.round(d.avg_risk * 100)}%
+        </span>
+        <span className="font-mono">
+          {d.unique_devices} device{d.unique_devices === 1 ? "" : "s"}
+        </span>
+      </div>
     </div>
   );
 }

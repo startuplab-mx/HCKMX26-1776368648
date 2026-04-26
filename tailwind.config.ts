@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["'Space Grotesk'", "system-ui", "sans-serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["'JetBrains Mono'", "monospace"],
+        display: ["'Cabinet Grotesk'", "'IBM Plex Sans'", "system-ui", "sans-serif"],
+        sans: ["'IBM Plex Sans'", "system-ui", "sans-serif"],
+        mono: ["'JetBrains Mono'", "Menlo", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -107,7 +107,11 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      boxShadow: {
+        elegant: "0 20px 50px -20px hsl(var(--primary) / 0.35)",
+        glow: "0 0 0 4px hsl(var(--primary) / 0.18), 0 12px 30px -10px hsl(var(--primary) / 0.5)",
+      },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

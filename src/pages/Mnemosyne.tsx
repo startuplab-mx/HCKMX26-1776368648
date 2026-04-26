@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Shield,
   Image as ImageIcon,
   Upload,
   Loader2,
@@ -11,7 +9,6 @@ import {
   Sparkles,
   X,
   Lock,
-  ShieldCheck,
   EyeOff,
   Eye,
   Ban,
@@ -19,6 +16,8 @@ import {
 import { type Severity } from "@/lib/utils";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { toast } from "sonner";
+import { AegisHeader } from "@/components/AegisHeader";
+import { AegisHero } from "@/components/AegisHero";
 import {
   perceptualHashFromDataUrl,
   hammingDistanceHex,
@@ -132,6 +131,45 @@ export default function Mnemosyne() {
     reader.readAsDataURL(file);
   }, []);
 
+  async function persistCriticalEvent(r: MnemosyneResult) {
+    // Persist Mnemosyne critical events into risk_events so the existing
+    // database trigger (notify_critical_risk) fires dispatch-critical-alert,
+    // which sends the Resend email + Twilio SMS to the parent on file.
+    try {
+      const { data: existing } = await supabase
+        .from("chat_sessions")
+        .select("id")
+        .eq("label", "Mnemosyne image")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let sessionId = existing?.id as string | undefined;
+      if (!sessionId) {
+        const { data: created, error: cErr } = await supabase
+          .from("chat_sessions")
+          .insert({ label: "Mnemosyne image" })
+          .select("id")
+          .single();
+        if (cErr) throw cErr;
+        sessionId = created.id;
+      }
+
+      const { error: insErr } = await supabase.from("risk_events").insert({
+        session_id: sessionId!,
+        category: r.category,
+        severity: r.severity,
+        risk_score: r.risk_score,
+        explanation: r.explanation,
+        recommended_action: r.recommended_action,
+        matched_patterns: r.identifying_info ?? [],
+      });
+      if (insErr) throw insErr;
+    } catch (e) {
+      console.warn("Mnemosyne: failed to persist critical event", e);
+    }
+  }
+
   async function analyze() {
     if (!imageDataUrl) return;
     setLoading(true);
@@ -163,6 +201,10 @@ export default function Mnemosyne() {
           toast.error(`Auto-blocked · ${CATEGORY_LABELS[r.category] ?? r.category}`, {
             description: r.explanation,
           });
+        }
+        // Fire-and-forget: persist so the DB trigger sends the Resend email + SMS.
+        if (r.severity === "critical") {
+          void persistCriticalEvent(r);
         }
       } else if (r.severity === "medium") {
         toast.warning(`Caution: ${CATEGORY_LABELS[r.category] ?? r.category}`, {
@@ -231,61 +273,42 @@ export default function Mnemosyne() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-shield text-primary-foreground shadow-elevated">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold leading-none">
-                Aegis
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                Mnemosyne · Image protection
-              </p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/echo"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Echo (voice)
-            </Link>
-            <Link
-              to="/helios"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Helios (screen)
-            </Link>
-            <Link
-              to="/dashboard"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AegisHeader
+        module="Mnemosyne"
+        tagline="image protection"
+        links={[
+          { label: "Argus", href: "/demo" },
+          { label: "Echo", href: "/echo" },
+          { label: "Helios", href: "/helios" },
+          { label: "Hermes", href: "/hermes" },
+          { label: "Aletheia", href: "/aletheia" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+        showTrust
+        showBackHome
+      />
 
-      <section className="border-b border-border bg-gradient-hero text-primary-foreground">
-        <div className="mx-auto max-w-[1400px] px-6 py-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest backdrop-blur">
-            <ImageIcon className="h-3 w-3" />
-            Mnemosyne — initiative #5
-          </div>
-          <h1 className="mt-4 font-display text-3xl font-bold sm:text-4xl">
-            Stop the image before it leaves the device.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80 sm:text-base">
-            Mnemosyne combines a local <strong>perceptual hash</strong> (the
-            image is fingerprinted in the browser, never uploaded for hashing)
-            with a vision risk classifier — so known sextortion images are
-            blocked instantly, and new ones are caught by AI.
-          </p>
-        </div>
-      </section>
+      <AegisHero
+        eyebrow="Mnemosyne · the memory"
+        icon={Fingerprint}
+        title="Stop the image before it leaves the device."
+        description={
+          <>
+            Mnemosyne combines a local <strong className="text-foreground">perceptual hash</strong>{" "}
+            (fingerprinted in the browser, never uploaded for hashing) with a
+            vision risk classifier — so known sextortion images are blocked
+            instantly, and new ones are caught by AI.
+            <br />
+            <br />
+            In LatAm almost no one knows NCMEC's{" "}
+            <strong className="text-foreground">TakeItDown</strong> exists, and
+            the interface is in English. Mnemosyne is a Spanish-friendly
+            wrapper: the minor fingerprints an intimate image before it leaks.
+            If a similar image is later submitted for upload anywhere we
+            integrate, Aegis blocks it.
+          </>
+        }
+      />
 
       <main className="mx-auto grid max-w-[1400px] gap-6 px-4 py-8 lg:grid-cols-[1fr_1fr] lg:px-6">
         {/* Left: dropzone */}
@@ -329,7 +352,7 @@ export default function Mnemosyne() {
                   : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50")
               }
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-shield text-primary-foreground shadow-elevated">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-elevated">
                 <Upload className="h-6 w-6" />
               </div>
               <div>
@@ -493,7 +516,7 @@ export default function Mnemosyne() {
 
         {/* Right: results */}
         <section className="rounded-2xl border border-border bg-card shadow-card">
-          <div className="flex items-center justify-between border-b border-border bg-gradient-hero px-5 py-4 text-primary-foreground">
+          <div className="flex items-center justify-between border-b border-border bg-primary px-5 py-4 text-primary-foreground">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
                 Image analysis
@@ -508,7 +531,7 @@ export default function Mnemosyne() {
           <div className="space-y-4 p-5">
             {!result && !loading && !error && (
               <div className="flex flex-col items-center gap-3 py-12 text-center">
-                <ShieldCheck className="h-10 w-10 text-muted-foreground/40" />
+                <Fingerprint className="h-10 w-10 text-muted-foreground/40" />
                 <p className="text-sm text-muted-foreground">
                   Drop an image to see Mnemosyne analysis.
                 </p>

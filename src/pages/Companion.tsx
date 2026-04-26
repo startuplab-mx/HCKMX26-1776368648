@@ -1,7 +1,4 @@
-import { Link } from "react-router-dom";
 import {
-  Shield,
-  ArrowLeft,
   Smartphone,
   Lock,
   Eye,
@@ -14,7 +11,10 @@ import {
   CheckCircle2,
   XCircle,
   FileCode,
+  Globe,
 } from "lucide-react";
+import { AegisHeader } from "@/components/AegisHeader";
+import { AegisHero } from "@/components/AegisHero";
 
 /**
  * Companion concept page — documents how the on-device capture would work
@@ -26,64 +26,54 @@ import {
 export default function Companion() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-shield text-primary-foreground shadow-elevated">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold leading-none">Aegis</p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                Mobile companion · concept
-              </p>
-            </div>
-          </Link>
-          <Link
-            to="/"
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Home
-          </Link>
-        </div>
-      </header>
+      <AegisHeader
+        module="Companion"
+        tagline="mobile capture concept"
+        links={[
+          { label: "Argus", href: "/demo" },
+          { label: "Echo", href: "/echo" },
+          { label: "Helios", href: "/helios" },
+          { label: "Mnemosyne", href: "/mnemosyne" },
+          { label: "Hermes", href: "/hermes" },
+          { label: "Aletheia", href: "/aletheia" },
+        ]}
+        showTrust
+        showBackHome
+      />
 
-      <main className="mx-auto max-w-[1200px] px-4 py-6 lg:px-6">
-        {/* Hero */}
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-hero p-8 text-primary-foreground shadow-elevated">
-          <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_15%_20%,hsl(168_76%_50%/0.4),transparent_55%),radial-gradient(circle_at_85%_70%,hsl(222_90%_55%/0.5),transparent_55%)]" />
-          <div className="relative max-w-3xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur">
-              <Smartphone className="h-3 w-3" />
-              Native architecture · not yet shipped
+      <AegisHero
+        eyebrow="Companion · native architecture"
+        icon={Smartphone}
+        title="How Aegis reads a child's screen — without storing what's there."
+        description={
+          <>
+            The web demo simulates capture. In production, a tiny native
+            companion app on the child's device feeds Argus, Echo, Helios and
+            Mnemosyne. This page documents that architecture: Android{" "}
+            <code className="mx-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-foreground">
+              AccessibilityService
+            </code>{" "}
+            + iOS{" "}
+            <code className="mx-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-foreground">
+              FamilyControls / DeviceActivity
+            </code>
+            .
+          </>
+        }
+        rightSlot={
+          <div className="rounded-md border border-border bg-card p-5 shadow-card">
+            <div className="overline mb-3">By the numbers</div>
+            <div className="grid grid-cols-2 gap-3">
+              <HeroStat icon={Lock} k="On-device" v="inference" />
+              <HeroStat icon={Cpu} k="< 50 MB" v="model size" />
+              <HeroStat icon={Radio} k="Metadata" v="emitted" />
+              <HeroStat icon={ShieldCheck} k="0 bytes" v="raw stored" />
             </div>
-            <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">
-              How Aegis would actually read a child's screen — without ever
-              storing what's there.
-            </h1>
-            <p className="mt-3 text-sm text-primary-foreground/80 sm:text-base">
-              The web demo simulates capture. In production, a tiny native
-              companion app on the child's device feeds Argus, Echo, Helios and
-              Mnemosyne. This page documents that architecture: Android
-              <code className="mx-1 rounded bg-primary-foreground/15 px-1.5 py-0.5 font-mono text-xs">
-                AccessibilityService
-              </code>
-              + iOS{" "}
-              <code className="mx-1 rounded bg-primary-foreground/15 px-1.5 py-0.5 font-mono text-xs">
-                FamilyControls / DeviceActivity
-              </code>
-              .
-            </p>
           </div>
+        }
+      />
 
-          <div className="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <HeroStat icon={Lock} k="On-device" v="inference" />
-            <HeroStat icon={Cpu} k="< 50 MB" v="model size" />
-            <HeroStat icon={Radio} k="Metadata-only" v="emitted" />
-            <HeroStat icon={ShieldCheck} k="0 bytes" v="raw text stored" />
-          </div>
-        </section>
+      <main className="mx-auto max-w-7xl px-6 py-6 lg:px-12">
 
         {/* Pipeline */}
         <Section
@@ -167,7 +157,6 @@ export default function Companion() {
       packageNames = arrayOf(
         "com.whatsapp",
         "com.instagram.android",
-        "com.zhiliaoapp.musically", // TikTok
         "com.roblox.client",
         "com.discord"
       )
@@ -284,6 +273,94 @@ func requestFamilyControls() async throws {
           </div>
         </Section>
 
+        {/* Safari Web Extension — fills the iOS gap */}
+        <Section
+          title="iOS · Safari Web Extension (the workaround)"
+          subtitle="Native iOS can't read other apps' text — but Safari extensions can read the DOM of web chat clients. This closes the gap."
+          icon={Globe}
+          accent="bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)]"
+        >
+          <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
+            <div className="space-y-3">
+              <Bullet ok>Reads chat bubbles on web.whatsapp.com, web.telegram.org, instagram.com, discord.com</Bullet>
+              <Bullet ok>Same MV3 codebase ships to Chrome, Edge, Brave, and Safari iOS</Bullet>
+              <Bullet ok>No FamilyControls authorization required — installed like any Safari extension</Bullet>
+              <Bullet warn>Only catches what the child opens in Safari (most LatAm teens use web.whatsapp on iPad heavily)</Bullet>
+              <Bullet warn>Doesn't see native app traffic — pair with FamilyControls for app-usage signals</Bullet>
+              <div className="rounded-xl border border-border bg-background/60 p-3 text-xs">
+                <p className="font-semibold">Surfaces covered</p>
+                <ul className="mt-1.5 space-y-0.5 font-mono text-[11px] text-muted-foreground">
+                  <li>web.whatsapp.com</li>
+                  <li>web.telegram.org</li>
+                  <li>instagram.com (DMs)</li>
+                  <li>discord.com</li>
+                </ul>
+              </div>
+              <p className="rounded-lg bg-severity-low/10 p-2 text-[11px] text-severity-low">
+                <strong>Why this matters:</strong> on iOS this is the only path
+                to text-level detection without asking the child to share
+                screen recordings. Same MutationObserver code runs unchanged on
+                Android Chrome as a defense-in-depth layer.
+              </p>
+            </div>
+
+            <CodeBlock
+              language="JavaScript"
+              filename="content-script.js"
+              code={`// Aegis Safari/Chrome MV3 content script
+// Injected into web.whatsapp.com, web.telegram.org, instagram.com, discord.com
+
+const SURFACES = {
+  "web.whatsapp.com":  { app: "whatsapp", selector: "div.copyable-text span" },
+  "web.telegram.org":  { app: "telegram", selector: ".message .text-content" },
+  "www.instagram.com": { app: "instagram", selector: "div[role='listbox'] div" },
+  "discord.com":       { app: "discord",  selector: "li[id^='chat-messages'] div[class*='markup']" },
+};
+
+const SURFACE = SURFACES[location.hostname];
+if (!SURFACE) throw new Error("aegis: unsupported host");
+
+const queue = [];
+const seen  = new WeakSet(); // dedupe DOM nodes
+
+const observer = new MutationObserver(() => {
+  document.querySelectorAll(SURFACE.selector).forEach(node => {
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    const text = node.innerText.trim();
+    if (text.length < 6) return;
+
+    queue.push({
+      app:       SURFACE.app,
+      snippet:   text,
+      timestamp: new Date().toISOString(),
+    });
+  });
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Flush every 4s — batched POST to Helios ingest
+async function flush() {
+  if (queue.length === 0) return;
+  const batch = queue.splice(0, queue.length);
+
+  // Inference happens server-side; raw text is dropped after scoring.
+  await fetch("https://api.aegis.app/helios/ingest", {
+    method:  "POST",
+    headers: { "content-type": "application/json" },
+    body:    JSON.stringify({ batch, deviceId: await aegisAnonId() }),
+    keepalive: true,
+  }).catch(() => { /* retry on next tick */ });
+}
+
+setInterval(flush, 4000);
+window.addEventListener("beforeunload", flush);`}
+            />
+          </div>
+        </Section>
+
         {/* Privacy model */}
         <Section
           title="Privacy & data model"
@@ -376,7 +453,7 @@ func requestFamilyControls() async throws {
           <p className="font-display text-sm font-semibold">Honest scope</p>
           <p className="mx-auto mt-1 max-w-2xl text-xs text-muted-foreground">
             This page is the <strong>architecture</strong>, not a working APK.
-            The Lovable hackathon project ships the cloud + dashboard + four
+            The Hackathon 404 project ships the cloud + dashboard + four
             detector demos. The companion app is a follow-up engineering effort
             (~6 weeks, 1 native engineer per platform). The code snippets above
             are production-shaped, not pseudo-code.
@@ -401,12 +478,12 @@ function HeroStat({
   v: string;
 }) {
   return (
-    <div className="rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 p-3 backdrop-blur">
-      <div className="flex items-center gap-2 text-primary-foreground/70">
-        <Icon className="h-3.5 w-3.5" />
-        <p className="text-[10px] font-semibold uppercase tracking-widest">{v}</p>
+    <div className="rounded-md border border-border bg-secondary/40 p-2.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="h-3 w-3" />
+        <p className="overline" style={{ fontSize: "0.55rem" }}>{v}</p>
       </div>
-      <p className="mt-1 font-display text-xl font-bold">{k}</p>
+      <p className="mt-0.5 font-display text-base font-bold tracking-tight text-primary">{k}</p>
     </div>
   );
 }

@@ -75,29 +75,35 @@ async function sendSms(to: string, body: string) {
 }
 
 async function sendEmail(to: string, subject: string, html: string, text: string) {
-  // Try Lovable's transactional email function. If it isn't deployed yet
-  // (user hasn't finished email domain setup), this will return an error
-  // and we record it as 'skipped' rather than 'failed'.
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const res = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+  // Send via Resend through the Lovable connector gateway.
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!lovableKey || !resendKey) {
+    throw new Error("Resend credentials not configured (LOVABLE_API_KEY / RESEND_API_KEY).");
+  }
+  // Until a custom domain is verified in Resend, emails must come from
+  // onboarding@resend.dev. This works out of the box for the demo.
+  const from = Deno.env.get("RESEND_FROM") ?? "Aegis Alerts <onboarding@resend.dev>";
+  const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serviceKey}`,
+      Authorization: `Bearer ${lovableKey}`,
+      "X-Connection-Api-Key": resendKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      templateName: "critical-alert",
-      recipientEmail: to,
-      idempotencyKey: `critical-${subject}-${to}-${Date.now()}`,
-      templateData: { subject, html, text },
+      from,
+      to: [to],
+      subject,
+      html,
+      text,
     }),
   });
+  const data = await res.json();
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Email function failed [${res.status}]: ${body.slice(0, 300)}`);
+    throw new Error(`Resend send failed [${res.status}]: ${JSON.stringify(data).slice(0, 400)}`);
   }
-  return await res.json();
+  return { id: data.id, from };
 }
 
 Deno.serve(async (req) => {
@@ -232,16 +238,16 @@ Open the Aegis dashboard for full context.`;
           channel: "email",
           recipient: parent.email,
           status: "sent",
-          payload: { subject },
+          payload: { subject, resend_id: r.id, from: r.from },
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        results.email = { status: "skipped", recipient: parent.email, error: msg };
+        results.email = { status: "failed", recipient: parent.email, error: msg };
         await supabase.from("alert_dispatches").insert({
           risk_event_id: event.id,
           channel: "email",
           recipient: parent.email,
-          status: "skipped",
+          status: "failed",
           error: msg,
           payload: { subject },
         });

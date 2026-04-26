@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChatPane } from "@/components/ChatPane";
-import { AlertCard, type RiskEvent } from "@/components/AlertCard";
-import { Shield, Trash2, Activity, BarChart3 } from "lucide-react";
+import { AlertCard, type RiskEvent, type Contact } from "@/components/AlertCard";
+import { Shield, Trash2, Activity, MessagesSquare } from "lucide-react";
 import type { Severity } from "@/lib/utils";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { categoryLabels } from "@/lib/utils";
-import { TrustLayerButton } from "@/components/TrustLayer";
+import { AegisHeader } from "@/components/AegisHeader";
+import { AegisHero } from "@/components/AegisHero";
+import { ScenarioControls } from "@/components/ScenarioControls";
 
 type LocalMessage = {
   id: string;
@@ -20,6 +21,9 @@ export default function ChatDemo() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [events, setEvents] = useState<RiskEvent[]>([]);
+  const [acked, setAcked] = useState<Record<string, boolean>>({});
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [scenarioBusy, setScenarioBusy] = useState(false);
 
   // Create a fresh session on mount
   useEffect(() => {
@@ -30,6 +34,17 @@ export default function ChatDemo() {
         .select()
         .single();
       if (!error && data) setSessionId(data.id);
+    })();
+  }, []);
+
+  // Load trusted contacts (used by Forward action)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("parent_contacts")
+        .select("id,label,email,phone")
+        .order("created_at", { ascending: true });
+      if (data) setContacts(data as Contact[]);
     })();
   }, []);
 
@@ -143,9 +158,54 @@ export default function ChatDemo() {
     setMessages((prev) => [...prev, m]);
   }
 
+  // Drives scenarios: insert a stranger message + analyze risk, mirroring ChatPane.send.
+  async function sendAsStranger(content: string, _persona?: string) {
+    if (!sessionId || !content.trim()) return;
+    setScenarioBusy(true);
+    try {
+      const { data: msgRow, error: msgErr } = await supabase
+        .from("chat_messages")
+        .insert({ session_id: sessionId, sender: "stranger", content })
+        .select()
+        .single();
+      if (msgErr) throw msgErr;
+
+      const history = messages.slice(-6).map((m) => `${m.sender}: ${m.content}`);
+      const { data: risk } = await supabase.functions.invoke("analyze-risk", {
+        body: { message: content, history },
+      });
+
+      if (risk) {
+        await supabase.from("risk_events").insert({
+          session_id: sessionId,
+          message_id: msgRow.id,
+          risk_score: risk.risk_score,
+          severity: risk.severity,
+          category: risk.category,
+          matched_patterns: risk.matched_patterns ?? [],
+          explanation: risk.explanation,
+          recommended_action: risk.recommended_action,
+        });
+      }
+
+      addMessage({
+        id: msgRow.id,
+        sender: "stranger",
+        content,
+        risk_score: risk?.risk_score,
+      });
+    } catch (e) {
+      console.error("scenario send failed", e);
+      toast.error("Scenario step failed");
+    } finally {
+      setScenarioBusy(false);
+    }
+  }
+
   async function reset() {
     setMessages([]);
     setEvents([]);
+    setAcked({});
     const { data } = await supabase
       .from("chat_sessions")
       .insert({ label: `Demo ${new Date().toLocaleTimeString()}` })
@@ -154,119 +214,205 @@ export default function ChatDemo() {
     if (data) setSessionId(data.id);
   }
 
+  function handleAck(eventId: string) {
+    setAcked((prev) => ({ ...prev, [eventId]: true }));
+    toast.success("Alert acknowledged", { duration: 1200 });
+  }
+
+  async function handleForward(eventId: string, contact: Contact) {
+    const evt = events.find((e) => e.id === eventId);
+    if (!evt) return;
+    toast.loading(`Forwarding to ${contact.label}…`, { id: `fwd-${eventId}` });
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "dispatch-critical-alert",
+        { body: { risk_event_id: eventId } },
+      );
+      if (error) throw error;
+      const emailStatus = data?.email?.status;
+      const smsStatus = data?.sms?.status;
+      toast.success(`Forwarded to ${contact.label}`, {
+        id: `fwd-${eventId}`,
+        description: `email: ${emailStatus ?? "—"} · sms: ${smsStatus ?? "—"}`,
+      });
+    } catch (e) {
+      toast.error("Forward failed", {
+        id: `fwd-${eventId}`,
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <a href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-shield text-primary-foreground shadow-elevated">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold leading-none">
-                Aegis
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                Argus · Live chat detector
-              </p>
-            </div>
-          </a>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-4 rounded-full border border-border bg-card px-4 py-1.5 text-xs">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Activity className="h-3 w-3" />
-                Safety score
-              </span>
+      <AegisHeader
+        module="Argus"
+        tagline="live chat detector"
+        links={[
+          { label: "Echo", href: "/echo" },
+          { label: "Helios", href: "/helios" },
+          { label: "Mnemosyne", href: "/mnemosyne" },
+          { label: "Hermes", href: "/hermes" },
+          { label: "Aletheia", href: "/aletheia" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+        showTrust
+        showBackHome
+      />
+
+      <AegisHero
+        eyebrow="Argus · live chat detector"
+        icon={MessagesSquare}
+        title="Two strangers, one chat — Aegis flags risk in real time."
+        description={
+          <>
+            Type as either side, or run a one-tap demo scenario. Argus scores
+            every message for grooming, sextortion, recruitment and personal-info
+            extraction. Parents see <strong>why</strong> a message is risky —
+            never the raw conversation.
+          </>
+        }
+        rightSlot={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div
+              className={
+                "group relative flex items-center gap-4 overflow-hidden rounded-lg border-2 px-5 py-3 shadow-card transition-colors " +
+                (stats.score < 60
+                  ? "border-severity-critical/40 bg-severity-critical/5"
+                  : stats.score < 85
+                    ? "border-severity-medium/40 bg-severity-medium/5"
+                    : "border-severity-low/40 bg-severity-low/5")
+              }
+            >
               <span
                 className={
-                  "font-mono text-base font-bold " +
+                  "grid h-10 w-10 place-items-center rounded-md " +
                   (stats.score < 60
-                    ? "text-severity-critical"
+                    ? "bg-severity-critical/15 text-severity-critical"
                     : stats.score < 85
-                      ? "text-severity-medium"
-                      : "text-severity-low")
+                      ? "bg-severity-medium/15 text-severity-medium"
+                      : "bg-severity-low/15 text-severity-low")
                 }
               >
-                {stats.score}
+                <Activity className="h-5 w-5" />
               </span>
+              <div className="leading-tight">
+                <div className="overline" style={{ fontSize: "0.55rem" }}>
+                  Safety score
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className={
+                      "font-display text-3xl font-black tabular-nums tracking-tight " +
+                      (stats.score < 60
+                        ? "text-severity-critical"
+                        : stats.score < 85
+                          ? "text-severity-medium"
+                          : "text-severity-low")
+                    }
+                  >
+                    {stats.score}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    / 100
+                  </span>
+                </div>
+              </div>
             </div>
-            <Link
-              to="/dashboard"
-              className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground sm:flex"
-            >
-              <BarChart3 className="h-3 w-3" />
-              Dashboard
-            </Link>
-            <TrustLayerButton />
             <button
               onClick={reset}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3.5 w-3.5" />
               Reset
             </button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {/* Main */}
-      <main className="mx-auto grid max-w-[1400px] gap-4 px-4 py-6 lg:grid-cols-[1fr_1fr_400px] lg:px-6">
-        <div className="h-[72vh] min-h-[560px]">
-          <ChatPane
-            sender="minor"
-            sessionId={sessionId}
-            messages={messages}
-            onSent={addMessage}
-            accent="primary"
+      <main className="mx-auto max-w-[1400px] px-4 py-6 lg:px-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <ScenarioControls
+            busy={scenarioBusy}
+            onSendStranger={sendAsStranger}
           />
-        </div>
-        <div className="h-[72vh] min-h-[560px]">
-          <ChatPane
-            sender="stranger"
-            sessionId={sessionId}
-            messages={messages}
-            onSent={addMessage}
-            accent="muted"
-          />
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="rounded-md bg-severity-critical px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-severity-critical-foreground">
+              {stats.critical} crit
+            </span>
+            <span className="rounded-md bg-severity-medium px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-severity-medium-foreground">
+              {stats.medium} caution
+            </span>
+          </div>
         </div>
 
-        {/* Alerts panel */}
-        <aside className="h-[72vh] min-h-[560px] overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-          <div className="flex items-center justify-between border-b border-border bg-gradient-hero px-4 py-3 text-primary-foreground">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
-                Parent dashboard
-              </p>
-              <p className="font-display text-base font-semibold">
-                Live alerts
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <span className="rounded-full bg-severity-critical px-2 py-0.5 text-[10px] font-bold text-severity-critical-foreground">
-                {stats.critical} critical
-              </span>
-              <span className="rounded-full bg-severity-medium px-2 py-0.5 text-[10px] font-bold text-severity-medium-foreground">
-                {stats.medium} caution
-              </span>
-            </div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_400px]">
+          <div className="h-[68vh] min-h-[520px]">
+            <ChatPane
+              sender="minor"
+              sessionId={sessionId}
+              messages={messages}
+              onSent={addMessage}
+              accent="primary"
+            />
           </div>
-          <div className="h-[calc(100%-64px)] space-y-3 overflow-y-auto p-4">
-            {events.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                <Shield className="h-10 w-10 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  No risks detected yet.
+          <div className="h-[68vh] min-h-[520px]">
+            <ChatPane
+              sender="stranger"
+              sessionId={sessionId}
+              messages={messages}
+              onSent={addMessage}
+              accent="muted"
+            />
+          </div>
+
+          {/* Aegis Console */}
+          <aside className="h-[68vh] min-h-[520px] overflow-hidden rounded-md border border-border bg-card shadow-card">
+            <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3 text-primary-foreground">
+              <div>
+                <p className="overline" style={{ color: "hsl(var(--accent))" }}>
+                  Parent view · alerts
                 </p>
-                <p className="text-xs text-muted-foreground/70">
-                  Send a message from either pane to see live analysis.
+                <p className="font-display text-base font-bold tracking-tight">
+                  Argus Console
                 </p>
               </div>
-            ) : (
-              events.map((e) => <AlertCard key={e.id} event={e} />)
-            )}
-          </div>
-        </aside>
+              <div className="flex gap-2">
+                <span className="rounded-md bg-severity-critical px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-severity-critical-foreground">
+                  {stats.critical} crit
+                </span>
+                <span className="rounded-md bg-severity-medium px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-severity-medium-foreground">
+                  {stats.medium} caution
+                </span>
+              </div>
+            </div>
+            <div className="h-[calc(100%-64px)] space-y-3 overflow-y-auto p-4">
+              {events.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                  <Shield className="h-10 w-10 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">
+                    No risks detected yet.
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">
+                    Pick a scenario above or type from either pane to start.
+                  </p>
+                </div>
+              ) : (
+                events.map((e) => (
+                  <AlertCard
+                    key={e.id}
+                    event={e}
+                    acknowledged={!!acked[e.id]}
+                    contacts={contacts}
+                    onAck={handleAck}
+                    onForward={handleForward}
+                  />
+                ))
+              )}
+            </div>
+          </aside>
+        </div>
       </main>
 
       <p className="px-6 pb-6 text-center text-xs text-muted-foreground">

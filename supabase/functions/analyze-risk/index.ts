@@ -1,11 +1,52 @@
 // Risk detection: hybrid (regex red-flags in Spanish/English + Lovable AI classifier)
 // Returns structured analysis for a single chat message.
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Approx Lovable AI gateway pricing (USD per 1k tokens)
+const PRICING: Record<string, { in: number; out: number }> = {
+  "google/gemini-2.5-flash": { in: 0.000075, out: 0.0003 },
+  "google/gemini-2.5-flash-lite": { in: 0.0000375, out: 0.00015 },
+  "google/gemini-2.5-pro": { in: 0.00125, out: 0.005 },
+  "google/gemini-3-flash-preview": { in: 0.000075, out: 0.0003 },
+  "openai/gpt-5-mini": { in: 0.00025, out: 0.002 },
+  "openai/gpt-5": { in: 0.00125, out: 0.01 },
+};
+
+async function logAiUsage(opts: {
+  function_name: string;
+  model: string;
+  usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
+}) {
+  try {
+    const u = opts.usage ?? {};
+    const p = Number(u.prompt_tokens ?? 0);
+    const c = Number(u.completion_tokens ?? 0);
+    const t = Number(u.total_tokens ?? p + c);
+    const price = PRICING[opts.model] ?? { in: 0.0001, out: 0.0003 };
+    const cost = (p / 1000) * price.in + (c / 1000) * price.out;
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    await supabase.from("ai_usage").insert({
+      function_name: opts.function_name,
+      model: opts.model,
+      prompt_tokens: p,
+      completion_tokens: c,
+      total_tokens: t,
+      cost_usd: cost,
+    });
+  } catch (e) {
+    console.error("ai_usage log failed (non-fatal):", e);
+  }
+}
 
 type RedFlagCategory =
   | "secrecy"
@@ -245,6 +286,8 @@ NEW message to classify:
   const data = await res.json();
   const call = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!call) throw new Error("No tool call in AI response");
+  // Fire-and-forget cost logging
+  logAiUsage({ function_name: "analyze-risk", model: "google/gemini-2.5-flash", usage: data.usage });
   return JSON.parse(call.function.arguments);
 }
 

@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Shield,
   Eye,
   Upload,
   ImageIcon,
@@ -15,6 +13,8 @@ import {
 import { categoryLabels, type Severity } from "@/lib/utils";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { toast } from "sonner";
+import { AegisHeader } from "@/components/AegisHeader";
+import { AegisHero } from "@/components/AegisHero";
 
 type HeliosResult = {
   extracted_text: string;
@@ -57,6 +57,45 @@ export default function Helios() {
     reader.readAsDataURL(file);
   }, []);
 
+  async function persistCriticalEvent(r: HeliosResult) {
+    // Persist Helios critical events into risk_events so the existing
+    // database trigger (notify_critical_risk) fires dispatch-critical-alert,
+    // which sends the Resend email + Twilio SMS to the parent on file.
+    try {
+      const { data: existing } = await supabase
+        .from("chat_sessions")
+        .select("id")
+        .eq("label", "Helios screen")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let sessionId = existing?.id as string | undefined;
+      if (!sessionId) {
+        const { data: created, error: cErr } = await supabase
+          .from("chat_sessions")
+          .insert({ label: "Helios screen" })
+          .select("id")
+          .single();
+        if (cErr) throw cErr;
+        sessionId = created.id;
+      }
+
+      const { error: insErr } = await supabase.from("risk_events").insert({
+        session_id: sessionId!,
+        category: r.category,
+        severity: r.severity,
+        risk_score: r.risk_score,
+        explanation: r.explanation,
+        recommended_action: r.recommended_action,
+        matched_patterns: r.visible_red_flags ?? [],
+      });
+      if (insErr) throw insErr;
+    } catch (e) {
+      console.warn("Helios: failed to persist critical event", e);
+    }
+  }
+
   async function analyze() {
     if (!imageDataUrl) return;
     setLoading(true);
@@ -75,6 +114,8 @@ export default function Helios() {
         toast.error(`Critical: ${categoryLabels[r.category] ?? r.category}`, {
           description: r.explanation,
         });
+        // Fire-and-forget: persist so the DB trigger sends the Resend email + SMS.
+        void persistCriticalEvent(r);
       } else if (r.severity === "medium") {
         toast.warning(`Caution: ${categoryLabels[r.category] ?? r.category}`, {
           description: r.explanation,
@@ -101,56 +142,35 @@ export default function Helios() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-shield text-primary-foreground shadow-elevated">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-bold leading-none">
-                Aegis
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                Helios · Screen analysis
-              </p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/demo"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Argus (chat)
-            </Link>
-            <Link
-              to="/dashboard"
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AegisHeader
+        module="Helios"
+        tagline="screen analysis"
+        links={[
+          { label: "Argus", href: "/demo" },
+          { label: "Echo", href: "/echo" },
+          { label: "Mnemosyne", href: "/mnemosyne" },
+          { label: "Hermes", href: "/hermes" },
+          { label: "Aletheia", href: "/aletheia" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+        showTrust
+        showBackHome
+      />
 
-      {/* Hero strip */}
-      <section className="border-b border-border bg-gradient-hero text-primary-foreground">
-        <div className="mx-auto max-w-[1400px] px-6 py-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest backdrop-blur">
-            <Eye className="h-3 w-3" />
-            Helios — initiative #3
-          </div>
-          <h1 className="mt-4 font-display text-3xl font-bold sm:text-4xl">
-            Drop a screenshot. We'll OCR it, classify the risk, and tell you what to do.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80 sm:text-base">
+      <AegisHero
+        eyebrow="Helios · the all-seeing sun"
+        icon={Eye}
+        title="Drop a screenshot. We'll OCR it and classify the risk."
+        description={
+          <>
             Helios is the OCR + vision layer of Aegis — designed for closed apps
-            like Snapchat, Roblox or in-game chats where Argus can't reach. The
-            image is analyzed in-memory and never stored.
-          </p>
-        </div>
-      </section>
+            like Snapchat, Roblox or in-game chats where Argus can't reach. OCR
+            works in <strong className="text-foreground">Spanish and English</strong>{" "}
+            (including Spanglish). The image is analyzed in-memory and never
+            stored.
+          </>
+        }
+      />
 
       {/* Main */}
       <main className="mx-auto grid max-w-[1400px] gap-6 px-4 py-8 lg:grid-cols-[1fr_1fr] lg:px-6">
@@ -195,7 +215,7 @@ export default function Helios() {
                   : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50")
               }
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-shield text-primary-foreground shadow-elevated">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-elevated">
                 <Upload className="h-6 w-6" />
               </div>
               <div>
@@ -255,7 +275,7 @@ export default function Helios() {
 
         {/* Right: results */}
         <section className="rounded-2xl border border-border bg-card shadow-card">
-          <div className="flex items-center justify-between border-b border-border bg-gradient-hero px-5 py-4 text-primary-foreground">
+          <div className="flex items-center justify-between border-b border-border bg-primary px-5 py-4 text-primary-foreground">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
                 Vision analysis

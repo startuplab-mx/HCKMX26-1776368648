@@ -11,3 +11,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.send-digest]
 verify_jwt = false
+[functions.generate-scenario]
+verify_jwt = false
+[functions.aegis-chat]
+verify_jwt = false
+[functions.executive-summary]
+verify_jwt = false

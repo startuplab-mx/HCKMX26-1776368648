@@ -10,9 +10,11 @@ import Helios from "./pages/Helios.tsx";
 import Mnemosyne from "./pages/Mnemosyne.tsx";
 import Echo from "./pages/Echo.tsx";
 import Hermes from "./pages/Hermes.tsx";
+import Aletheia from "./pages/Aletheia.tsx";
 import Companion from "./pages/Companion.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { TrustProvider } from "./components/TrustLayer.tsx";
+import { ChatbotBubble } from "./components/ChatbotBubble.tsx";
 
 const queryClient = new QueryClient();
 
@@ -31,10 +33,12 @@ const App = () => (
           <Route path="/mnemosyne" element={<Mnemosyne />} />
           <Route path="/echo" element={<Echo />} />
           <Route path="/hermes" element={<Hermes />} />
+          <Route path="/aletheia" element={<Aletheia />} />
           <Route path="/companion" element={<Companion />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <ChatbotBubble />
       </BrowserRouter>
       </TrustProvider>
     </TooltipProvider>

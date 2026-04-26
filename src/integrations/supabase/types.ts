@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          completion_tokens: number
+          cost_usd: number
+          created_at: string
+          function_name: string
+          id: string
+          model: string
+          prompt_tokens: number
+          total_tokens: number
+        }
+        Insert: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          function_name: string
+          id?: string
+          model: string
+          prompt_tokens?: number
+          total_tokens?: number
+        }
+        Update: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          function_name?: string
+          id?: string
+          model?: string
+          prompt_tokens?: number
+          total_tokens?: number
+        }
+        Relationships: []
+      }
       alert_dispatches: {
         Row: {
           channel: string
